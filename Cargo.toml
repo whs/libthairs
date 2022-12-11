@@ -1,0 +1,23 @@
+[package]
+name = "thairs"
+version = "0.1.0"
+edition = "2021"
+license = "LGPL-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "thai"
+crate-type = ["cdylib"]
+
+[profile.release]
+debug = 1
+strip = true
+lto = true
+codegen-units = 1
+
+[dependencies]
+libc = "0.2"
+itertools = "0.10"
+datrie = { path = "datrie" }
+lazy_static = "1"
