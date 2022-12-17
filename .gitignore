@@ -1,4 +1,4 @@
 target
 Cargo.lock
 /c_test/test_thbrk
-
+/c_test/test_thwchar

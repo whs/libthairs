@@ -18,9 +18,9 @@
 
 use crate::thbrk::{DatrieBrk, TisBreaker};
 use itertools::Itertools;
+use libc::{c_char, c_int};
 use std::ffi::{CStr, OsStr};
 use std::io::{Cursor, Write};
-use std::os::raw::{c_char, c_int};
 use std::path::Path;
 use std::ptr::null_mut;
 use std::slice;
@@ -114,7 +114,7 @@ pub unsafe extern "C" fn th_brk_find_breaks(
 
     let input = CStr::from_ptr(s);
 
-    let out = brk.find_breaks(input.to_bytes(), pos_sz); // TODO: Optimize
+    let out = brk.find_breaks_tis(input.to_bytes(), pos_sz); // TODO: Optimize
     let pos = slice::from_raw_parts_mut(pos as *mut i32, pos_sz);
     pos[..out.len()].copy_from_slice(
         &out.iter()
@@ -153,7 +153,7 @@ pub unsafe extern "C" fn th_brk_insert_breaks(
     let mut cur = Cursor::new(out);
 
     // TODO: Use builtin intersperse (rust#79524)
-    let pieces = Itertools::intersperse(brk.split(input).into_iter(), delim_s);
+    let pieces = Itertools::intersperse(brk.split_tis(input).into_iter(), delim_s);
     for piece in pieces {
         match cur.write(piece) {
             Ok(v) if v == piece.len() => {}

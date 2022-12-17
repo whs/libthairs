@@ -582,6 +582,19 @@ pub fn brk_class(c: u8) -> BreakClass {
     CHAR_CLASS[c as usize]
 }
 
+pub fn brk_class_utf(c: char) -> BreakClass {
+    match c {
+        '\t' | ' ' => BreakClass::Space,
+        '\n'..='\r' => BreakClass::Mb,
+        '"' | '#' => BreakClass::Quote,
+        '$' => BreakClass::NumCur,
+        '%' => BreakClass::NumNb,
+        '&' => BreakClass::Alpha,
+        // TODO
+        _ => BreakClass::Nbb,
+    }
+}
+
 const _P: BreakOperation = BreakOperation::Prohibited;
 const _A: BreakOperation = BreakOperation::Allowed;
 const _I: BreakOperation = BreakOperation::Indirect;

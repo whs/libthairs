@@ -17,24 +17,86 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 use crate::thbrk::brkpos;
+use crate::thbrk::datrie::BreakInput;
 /// Thai word break with maximal matching scheme
 use crate::DatrieBrk;
+use fst::automaton::Str;
+use fst::{Automaton, IntoStreamer, Streamer};
+use std::cmp::{Ordering, Reverse};
+use std::collections::BinaryHeap;
+use std::str::from_utf8;
 
+#[derive(Default, Clone)]
 struct Shot {
     dict_state: i32, // TODO
-    str_pos: i32,
-    brk_pos: i32,
-    n_brk_pos: i32,
-    cur_brk_pos: i32,
+    str_pos: usize,
+    brk_pos: Vec<usize>,
     penalty: i32,
 }
 
-struct Pool {
-    // next: *Pool,
-    shot: Shot,
+impl Eq for Shot {}
+
+impl PartialEq<Self> for Shot {
+    fn eq(&self, other: &Self) -> bool {
+        self.str_pos == other.str_pos
+            && self.penalty == other.penalty
+            && self.brk_pos == other.brk_pos
+    }
 }
 
-pub fn maximal_do(brk: &DatrieBrk, input: &[u8]) -> Vec<usize> {
-    let brkpos_hints = brkpos::hints(input);
+impl PartialOrd<Self> for Shot {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        if self.brk_pos.len() == 0 {
+            if other.brk_pos.len() == 0 {
+                return Some(Ordering::Equal);
+            }
+            return Some(Ordering::Less);
+        }
+        if other.brk_pos.len() == 0 {
+            return Some(Ordering::Greater);
+        }
+
+        let my_last = self.brk_pos.last().unwrap();
+        let their_last = other.brk_pos.last().unwrap();
+        return if my_last == their_last {
+            Some(Ordering::Equal)
+        } else if my_last < their_last {
+            Some(Ordering::Less)
+        } else {
+            Some(Ordering::Greater)
+        };
+    }
+}
+
+impl Ord for Shot {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
+#[derive(Default, Clone)]
+struct BestBrk {
+    brk_pos: Vec<usize>,
+    str_pos: usize,
+    penalty: i32,
+}
+
+#[derive(Default, Copy, Clone)]
+struct RecovHist {
+    pos: Option<usize>,
+    recov: Option<i32>,
+}
+
+pub(super) fn maximal_do(brk: &DatrieBrk, input: &BreakInput) -> Vec<usize> {
+    let brkpos_hints = brkpos::hints(&input.tis);
+
+    let matcher = Str::new(&input.utf);
+    let mut stream = brk.trie.search_with_state(matcher).into_stream();
+
+    while let Some((item, state)) = stream.next() {
+        println!("input {} matched {}", input.utf, from_utf8(item).unwrap());
+    }
+    println!("input {} done", input.utf);
+
     Vec::new()
 }

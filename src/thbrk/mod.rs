@@ -20,14 +20,39 @@ mod brkpos;
 mod c_api;
 mod data;
 mod datrie;
+#[cfg(test)]
+mod test;
 
 pub use self::datrie::DatrieBrk;
+use encoding_rs::WINDOWS_874;
 
 /// TisBreaker implement Thai word breaking algorithm with TIS-620 input
 pub trait TisBreaker {
-    fn find_breaks<'a>(&'a self, input: &'a [u8], max_out: usize) -> Vec<usize>;
+    fn find_breaks_tis<'a>(&'a self, input: &'a [u8], max_out: usize) -> Vec<usize>;
 
-    fn split<'a>(&'a self, input: &'a [u8]) -> Vec<&[u8]> {
+    fn split_tis<'a>(&'a self, input: &'a [u8]) -> Vec<&[u8]> {
+        let breaks = self.find_breaks_tis(input, input.len());
+        let mut out = Vec::new();
+
+        let mut last_break = 0;
+        for brk in breaks {
+            out.push(&input[last_break..brk]);
+            last_break = brk;
+        }
+        let remainder = &input[last_break..];
+        if remainder.len() > 0 {
+            out.push(remainder);
+        }
+
+        out
+    }
+}
+
+/// StrBreaker implement Thai word breaking algorithm with UTF-8 input
+pub trait StrBreaker {
+    fn find_breaks<'a>(&'a self, input: &'a str, max_out: usize) -> Vec<usize>;
+
+    fn split<'a>(&'a self, input: &'a str) -> Vec<&str> {
         let breaks = self.find_breaks(input, input.len());
         let mut out = Vec::new();
 
@@ -38,9 +63,16 @@ pub trait TisBreaker {
         }
         let remainder = &input[last_break..];
         if remainder.len() > 0 {
-            out.push(&remainder);
+            out.push(remainder);
         }
 
         out
+    }
+}
+
+impl TisBreaker for dyn StrBreaker {
+    fn find_breaks_tis<'a>(&'a self, input: &'a [u8], max_out: usize) -> Vec<usize> {
+        let (input_utf, _) = WINDOWS_874.decode_without_bom_handling(input);
+        self.find_breaks(&input_utf, max_out)
     }
 }

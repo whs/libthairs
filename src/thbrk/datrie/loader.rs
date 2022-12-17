@@ -16,9 +16,21 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ////////////////////////////////////////////////////////////////////////////////
 
-mod cursor;
-pub mod data;
-mod thbrk;
-mod thwchar;
+use datrie::Trie;
+use std::char::{decode_utf16, DecodeUtf16Error};
+use std::io;
+use std::io::Read;
 
-pub use thbrk::{DatrieBrk, TisBreaker};
+/// load .tri file into fst
+/// tri file should have UCS-4 encoding (UTF-32) but it seems that decoding with UTF16 works...
+pub fn load<R: Read>(reader: &mut R) -> io::Result<fst::Set<Vec<u8>>> {
+    let out = Trie::from_reader(reader)?;
+    fst::Set::from_iter(out.iter().map(|item| {
+        debug_assert!(item.1.is_none());
+
+        decode_utf16(item.0.iter().map(|i| *i as u16))
+            .collect::<Result<String, DecodeUtf16Error>>()
+            .unwrap()
+    }))
+    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+}

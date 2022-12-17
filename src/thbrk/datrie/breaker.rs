@@ -17,30 +17,31 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 use crate::thbrk::data::*;
-use crate::thbrk::datrie::maximal;
+use crate::thbrk::datrie::{maximal, BreakInput};
 use crate::DatrieBrk;
 
 const MAX_ACRONYM_FRAG_LEN: usize = 3;
 
-pub fn find_breaks(brk: &DatrieBrk, input: &[u8], max_out: usize) -> Vec<usize> {
-    if input.len() == 0 {
+pub(super) fn find_breaks(brk: &DatrieBrk, input: &BreakInput, max_out: usize) -> Vec<usize> {
+    let tis_input = &input.tis;
+    if tis_input.len() == 0 {
         return Vec::new();
     }
 
     let mut out: Vec<usize> = Vec::with_capacity(max_out);
     let mut chunk = 0;
     let mut acronym_end = 0;
-    let mut prev_class = brk_class(input[0]);
+    let mut prev_class = brk_class(tis_input[0]);
     let mut effective_class = prev_class;
 
     let mut p = 1;
 
-    while p < input.len() && out.len() < max_out {
-        let mut new_class = brk_class(input[p]);
+    while p < tis_input.len() && out.len() < max_out {
+        let mut new_class = brk_class(tis_input[p]);
 
         if prev_class == BreakClass::Thai || prev_class == BreakClass::Alpha {
             // handle acronyms
-            if input[p] == '.' as u8 && p - acronym_end <= MAX_ACRONYM_FRAG_LEN {
+            if tis_input[p] == '.' as u8 && p - acronym_end <= MAX_ACRONYM_FRAG_LEN {
                 new_class = prev_class;
                 acronym_end = p + 1;
             } else if acronym_end > chunk {
@@ -53,13 +54,13 @@ pub fn find_breaks(brk: &DatrieBrk, input: &[u8], max_out: usize) -> Vec<usize> 
 
                     chunk = acronym_end;
                     p = acronym_end;
-                    new_class = brk_class(input[p]);
+                    new_class = brk_class(tis_input[p]);
                 }
             }
 
             // break chunk if leaving Thai chunk
             if prev_class == BreakClass::Thai && new_class != BreakClass::Thai && p > chunk {
-                let n_brk = maximal::maximal_do(brk, &input[chunk..p]);
+                let n_brk = maximal::maximal_do(brk, &input.substring(chunk, p));
                 out.extend(n_brk.iter().map(|i| *i + chunk));
 
                 // remove last break if at string end
@@ -85,7 +86,7 @@ pub fn find_breaks(brk: &DatrieBrk, input: &[u8], max_out: usize) -> Vec<usize> 
 
         match op {
             BreakOperation::Allowed => {
-                if input[p] != '\n' as u8 || input[p - 1] != '\r' as u8 {
+                if tis_input[p] != '\n' as u8 || tis_input[p - 1] != '\r' as u8 {
                     out.push(p);
                 }
             }
@@ -107,7 +108,7 @@ pub fn find_breaks(brk: &DatrieBrk, input: &[u8], max_out: usize) -> Vec<usize> 
 
     // break last Thai non-acronym chunk
     if prev_class == BreakClass::Thai && acronym_end <= chunk && out.len() < max_out {
-        let n_brk = maximal::maximal_do(brk, &input[chunk..p]);
+        let n_brk = maximal::maximal_do(brk, &input.substring(chunk, p));
         out.extend(n_brk.iter().map(|i| *i + chunk));
 
         // remove last break if at string end

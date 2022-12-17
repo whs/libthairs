@@ -73,7 +73,7 @@ impl Trie {
 
         unsafe {
             let size = trie_get_serialized_size(lock.cast());
-            let mut buf = vec![0 as u8; size];
+            let mut buf = vec![0u8; size];
             trie_serialize(lock.cast(), buf.as_mut_ptr());
             writer.write(&buf)
         }
