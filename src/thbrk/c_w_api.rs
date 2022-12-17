@@ -20,6 +20,7 @@ use crate::thbrk::c_tis_api::DefaultBreaker;
 use crate::thbrk::datrie::SHARED_BRK;
 use crate::thbrk::StrBreaker;
 use crate::utils;
+use itertools::Itertools;
 use libc::{c_int, size_t, wchar_t};
 use std::slice;
 
@@ -128,11 +129,13 @@ pub unsafe extern "C" fn th_brk_wc_insert_breaks(
     };
     let mut out = slice::from_raw_parts_mut(out, out_sz);
 
-    let out_str = brk.split(&input_str).join(&delim_str);
+    let out_str = Itertools::intersperse(brk.split(&input_str).into_iter(), &delim_str);
     let mut pos = 0;
-    for ch in out_str.chars() {
-        out[pos] = ch as i32;
-        pos += 1;
+    for piece in out_str {
+        for ch in piece.chars() {
+            out[pos] = ch as i32;
+            pos += 1;
+        }
     }
     out[pos] = 0;
 
