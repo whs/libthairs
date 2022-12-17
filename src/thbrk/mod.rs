@@ -26,6 +26,7 @@ mod test;
 
 pub use self::datrie::DatrieBrk;
 use encoding_rs::WINDOWS_874;
+use std::str::from_utf8_unchecked;
 
 /// TisBreaker implement Thai word breaking algorithm with TIS-620 input
 pub trait TisBreaker {
@@ -51,21 +52,29 @@ pub trait TisBreaker {
 
 /// StrBreaker implement Thai word breaking algorithm with UTF-8 input
 pub trait StrBreaker {
+    /// The return value is character index and not byte index
     fn find_breaks<'a>(&'a self, input: &'a str, max_out: usize) -> Vec<usize>;
 
-    fn split<'a>(&'a self, input: &'a str) -> Vec<&str> {
-        let breaks = self.find_breaks(input, input.len());
-        let mut out = Vec::new();
+    fn split<'a>(&'a self, input: &'a str) -> Vec<&'a str> {
+        let mut breaks = self.find_breaks(input, input.len()).into_iter();
 
-        let mut last_break = 0;
-        for brk in breaks {
-            out.push(&input[last_break..brk]);
-            last_break = brk;
+        let mut cur_break = match breaks.next() {
+            Some(v) => v,
+            None => return vec![input],
+        };
+        let mut out: Vec<&str> = Vec::new();
+        let mut last_ch_pos = 0;
+        for (ch_pos, (byte_pos, _)) in input.char_indices().enumerate() {
+            if ch_pos == cur_break {
+                out.push(&input[last_ch_pos..byte_pos]);
+                last_ch_pos = byte_pos;
+                cur_break = match breaks.next() {
+                    Some(v) => v,
+                    None => break,
+                }
+            }
         }
-        let remainder = &input[last_break..];
-        if remainder.len() > 0 {
-            out.push(remainder);
-        }
+        out.push(&input[last_ch_pos..]);
 
         out
     }

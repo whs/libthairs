@@ -87,7 +87,7 @@ pub fn to_windows874(txt: &str, err_replacement: u8) -> Vec<u8> {
         }
     }
     out.truncate(out_len);
-    debug_assert_eq!(out_len, txt.len());
+    debug_assert_eq!(out_len, txt.chars().count());
 
     out
 }

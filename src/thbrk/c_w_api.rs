@@ -62,15 +62,12 @@ pub unsafe extern "C" fn th_brk_wc_find_breaks(
     };
 
     let out = brk.find_breaks(&input_str, pos_sz);
+    let out_len = out.len();
     let pos = slice::from_raw_parts_mut(pos as *mut i32, pos_sz);
-    pos[..out.len()].copy_from_slice(
-        &out.iter()
-            .copied()
-            .take(pos_sz)
-            .map(|i| i as i32)
-            .collect::<Vec<i32>>(),
-    );
-    out.len() as i32
+    for (idx, v) in out.into_iter().take(pos_sz).enumerate() {
+        pos[idx] = v as i32
+    }
+    out_len as i32
 }
 
 #[no_mangle]
