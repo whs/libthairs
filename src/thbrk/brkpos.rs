@@ -18,8 +18,8 @@
 
 use crate::data;
 
-pub fn hints(input: &[u8]) -> Vec<u8> {
-    let mut hints = vec![0 as u8; input.len()];
+pub fn hints(input: &[u8]) -> Vec<bool> {
+    let mut hints = vec![false; input.len()];
 
     let mut i = 0;
     while i < input.len() {
@@ -33,7 +33,7 @@ pub fn hints(input: &[u8]) -> Vec<u8> {
                 && input[i + 1] == data::TIS_ไม้ไต่คู้
                 && (input[i + 2] == data::TIS_อ || input[i + 2] == data::TIS_ว)
             {
-                hints[i] = 1;
+                hints[i] = true;
                 i += 4; /* the cons + ไม้ไต่คู้ + อ/ว + cons */
             } else if (i > 0
                 && (input[i - 1] == data::TIS_ไม้หันอากาศ
@@ -45,11 +45,11 @@ pub fn hints(input: &[u8]) -> Vec<u8> {
             {
                 i += 1;
             } else {
-                hints[i] = 1;
+                hints[i] = true;
                 i += 1;
             }
         } else if input[i] == data::TIS_เ || input[i] == data::TIS_แ {
-            hints[i] = 1; /* สระเอ / สระแอ */
+            hints[i] = true; /* สระเอ / สระแอ */
             i += 2; /* สระเอ / สระแอ + the supposedly cons */
             if i >= input.len() {
                 break;
@@ -74,10 +74,10 @@ pub fn hints(input: &[u8]) -> Vec<u8> {
                          */
             }
         } else if data::is_leading_vowel(input[i]) {
-            hints[i] = 1; // the ldvowel
+            hints[i] = true; // the ldvowel
             i += 2; /* the ldvowel + the supposedly cons */
         } else if input[i] == data::TIS_ฤ || input[i] == data::TIS_ฦ {
-            hints[i] = 1;
+            hints[i] = true;
             i += 1;
         } else {
             i += 1;

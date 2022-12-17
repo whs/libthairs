@@ -16,87 +16,91 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ////////////////////////////////////////////////////////////////////////////////
 
-use crate::thbrk::brkpos;
 use crate::thbrk::datrie::BreakInput;
 /// Thai word break with maximal matching scheme
 use crate::DatrieBrk;
-use fst::automaton::Str;
 use fst::{Automaton, IntoStreamer, Streamer};
-use std::cmp::{Ordering, Reverse};
-use std::collections::BinaryHeap;
 use std::str::from_utf8;
 
-#[derive(Default, Clone)]
-struct Shot {
-    dict_state: i32, // TODO
-    str_pos: usize,
-    brk_pos: Vec<usize>,
-    penalty: i32,
-}
-
-impl Eq for Shot {}
-
-impl PartialEq<Self> for Shot {
-    fn eq(&self, other: &Self) -> bool {
-        self.str_pos == other.str_pos
-            && self.penalty == other.penalty
-            && self.brk_pos == other.brk_pos
-    }
-}
-
-impl PartialOrd<Self> for Shot {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        if self.brk_pos.len() == 0 {
-            if other.brk_pos.len() == 0 {
-                return Some(Ordering::Equal);
-            }
-            return Some(Ordering::Less);
-        }
-        if other.brk_pos.len() == 0 {
-            return Some(Ordering::Greater);
-        }
-
-        let my_last = self.brk_pos.last().unwrap();
-        let their_last = other.brk_pos.last().unwrap();
-        return if my_last == their_last {
-            Some(Ordering::Equal)
-        } else if my_last < their_last {
-            Some(Ordering::Less)
-        } else {
-            Some(Ordering::Greater)
-        };
-    }
-}
-
-impl Ord for Shot {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap()
-    }
-}
-
-#[derive(Default, Clone)]
-struct BestBrk {
-    brk_pos: Vec<usize>,
-    str_pos: usize,
-    penalty: i32,
-}
-
-#[derive(Default, Copy, Clone)]
-struct RecovHist {
-    pos: Option<usize>,
-    recov: Option<i32>,
-}
-
+/// maximal_do return character position to cut
 pub(super) fn maximal_do(brk: &DatrieBrk, input: &BreakInput) -> Vec<usize> {
-    let brkpos_hints = brkpos::hints(&input.tis);
+    // brkpos_hint is not used because this algorithm operate on &[u8] and it would be costly
+    // to convert it to character positions
 
-    let matcher = Str::new(&input.utf);
-    let mut stream = brk.trie.search_with_state(matcher).into_stream();
+    let mut txt: &str = &input.utf;
+    let mut out = Vec::new();
+    let mut pos_char = 0;
+    let mut longest = Vec::with_capacity(txt.len());
+    while txt.len() > 0 {
+        let matcher = LongestSubstring::new(txt);
+        let mut stream = brk.trie.search(matcher).into_stream();
 
-    while let Some((item, state)) = stream.next() {
-        println!("input {} matched {}", input.utf, from_utf8(item).unwrap());
+        unsafe {
+            longest.set_len(0);
+        }
+
+        while let Some(item) = stream.next() {
+            if item.len() > longest.len() {
+                unsafe {
+                    longest.set_len(item.len());
+                }
+                longest.copy_from_slice(item);
+            }
+        }
+
+        if longest.len() == 0 {
+            break;
+        }
+
+        pos_char += from_utf8(&longest).unwrap().chars().count();
+        out.push(pos_char);
+        txt = &txt[longest.len()..];
     }
-    println!("input {} done", input.utf);
 
-    Vec::new()
+    out
+}
+
+#[derive(Debug, Clone)]
+struct LongestSubstring<'a> {
+    str: &'a [u8],
+}
+
+impl<'a> LongestSubstring<'a> {
+    fn new(str: &'a str) -> Self {
+        Self {
+            str: str.as_bytes(),
+        }
+    }
+}
+
+impl<'a> Automaton for LongestSubstring<'a> {
+    type State = Option<usize>;
+
+    fn start(&self) -> Self::State {
+        Some(0)
+    }
+
+    fn is_match(&self, state: &Self::State) -> bool {
+        match *state {
+            Some(v) if v <= self.str.len() => true,
+            _ => false,
+        }
+    }
+
+    fn can_match(&self, pos: &Option<usize>) -> bool {
+        pos.is_some()
+    }
+
+    fn accept(&self, pos: &Self::State, byte: u8) -> Self::State {
+        // if we aren't already past the end...
+        if let Some(pos) = *pos {
+            // and there is still a matching byte at the current position...
+            if self.str.get(pos).cloned() == Some(byte) {
+                // then move forward
+                return Some(pos + 1);
+            }
+        }
+        // otherwise we're either past the end or didn't match the byte
+        None
+    }
 }
