@@ -24,7 +24,7 @@ use std::path::{Path, PathBuf};
 use std::{env, io};
 
 use crate::thbrk::TisBreaker;
-use encoding_rs::{EncoderResult, WINDOWS_874};
+use encoding_rs::WINDOWS_874;
 use lazy_static::lazy_static;
 
 mod breaker;
@@ -52,7 +52,7 @@ impl DatrieBrk {
     }
 
     pub fn from_path(dict_path: &Path) -> io::Result<Self> {
-        let mut fp = File::open(dict_path)?;
+        let fp = File::open(dict_path)?;
         let mut buf = BufReader::new(fp);
         let fst = loader::load(&mut buf)?;
 
@@ -85,7 +85,7 @@ impl TisBreaker for DatrieBrk {
 
 pub(super) struct BreakInput<'a> {
     pub(super) tis: Cow<'a, [u8]>,
-    pub(super) utf: Cow<'a, str>,
+    pub(super) char: Cow<'a, [char]>,
 }
 
 impl<'a> BreakInput<'a> {
@@ -94,63 +94,29 @@ impl<'a> BreakInput<'a> {
         debug_assert_eq!(tis.len(), utf.chars().count());
         Self {
             tis: Cow::from(tis),
-            utf,
+            char: Cow::from(utf.chars().collect::<Vec<char>>()),
         }
     }
 
     pub(super) fn from_utf(utf: &'a str) -> Self {
-        let mut encoder = WINDOWS_874.new_encoder();
-        let mut buf = vec![
-            0;
-            encoder
-                .max_buffer_length_from_utf8_if_no_unmappables(utf.len())
-                .unwrap()
-        ];
-        let mut cur_in = utf;
-        let mut cur_out = buf.as_mut_slice();
-        let mut out_len = 0;
-        while !cur_in.is_empty() {
-            let (res, isize, osize) =
-                encoder.encode_from_utf8_without_replacement(cur_in, cur_out, true);
-            cur_in = &cur_in[isize..];
-            cur_out = &mut cur_out[osize..];
-            out_len += osize;
-
-            match res {
-                EncoderResult::InputEmpty => {
-                    break;
-                }
-                EncoderResult::OutputFull => unreachable!(),
-                EncoderResult::Unmappable(_) => {
-                    cur_out[0] = u8::MAX;
-                    cur_out = &mut cur_out[1..];
-                    out_len += 1;
-                }
-            }
-        }
-        buf.truncate(out_len);
-        debug_assert_eq!(out_len, utf.len());
+        let tis = crate::utils::to_windows874(utf, u8::MAX);
+        debug_assert_eq!(tis.len(), utf.chars().count());
         Self {
-            tis: Cow::from(buf),
-            utf: Cow::from(utf),
+            tis: Cow::from(tis),
+            char: Cow::from(utf.chars().collect::<Vec<char>>()),
         }
     }
 
     pub(super) fn substring(&'a self, min: usize, max: usize) -> Self {
-        let tis_ranged = &self.tis[min..max];
-        let mut utf_chars = self.utf.char_indices().take(max).skip(min);
-        let first_utf = utf_chars.next();
-        let first_utf_pos = first_utf.map_or(0, |v| v.0);
-        let first_utf_len = first_utf.map_or(0, |v| v.1.len_utf8());
-        let last_utf_pos = utf_chars
-            .last()
-            .map_or(first_utf_pos + first_utf_len, |v| v.0 + v.1.len_utf8());
-        let utf_ranged = &self.utf[first_utf_pos..last_utf_pos];
-        debug_assert_eq!(tis_ranged.len(), utf_ranged.chars().count());
         Self {
-            tis: Cow::from(tis_ranged),
-            utf: Cow::from(utf_ranged),
+            tis: Cow::from(&self.tis[min..max]),
+            char: Cow::from(&self.char[min..max]),
         }
+    }
+
+    /// Return a copy of the String stored
+    pub fn str(&'a self) -> String {
+        crate::utils::as_str(&self.char)
     }
 }
 

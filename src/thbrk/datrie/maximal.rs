@@ -16,20 +16,31 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ////////////////////////////////////////////////////////////////////////////////
 
+use crate::thbrk::brkpos;
 use crate::thbrk::datrie::BreakInput;
 /// Thai word break with maximal matching scheme
 use crate::DatrieBrk;
 use fst::{Automaton, IntoStreamer, Streamer};
-use std::str::from_utf8;
+use std::iter;
+use std::str::from_utf8_unchecked;
 
 /// maximal_do return character position to cut
 pub(super) fn maximal_do(brk: &DatrieBrk, input: &BreakInput) -> Vec<usize> {
-    // brkpos_hint is not used because this algorithm operate on &[u8] and it would be costly
-    // to convert it to character positions
+    // expand brkpos::hints to index of [u8]
+    let brkpos_hints_expanded = brkpos::hints(&input.tis)
+        .into_iter()
+        .enumerate()
+        .flat_map(|(index, can_cut)| {
+            let ch = input.char[index];
+            iter::once(can_cut).chain(iter::repeat(false).take(ch.len_utf8() - 1))
+        })
+        .collect::<Vec<bool>>();
+    let mut hints: &[bool] = &brkpos_hints_expanded;
 
-    let mut txt: &str = &input.utf;
+    let mut txt: &str = &input.str();
+    debug_assert_eq!(brkpos_hints_expanded.len(), txt.len());
     let mut out = Vec::new();
-    let mut pos_char = 0;
+    let mut pos = 0;
     let mut longest = Vec::with_capacity(txt.len());
     while txt.len() > 0 {
         let matcher = LongestSubstring::new(txt);
@@ -40,6 +51,10 @@ pub(super) fn maximal_do(brk: &DatrieBrk, input: &BreakInput) -> Vec<usize> {
         }
 
         while let Some(item) = stream.next() {
+            match hints.get(item.len()) {
+                Some(false) => continue,
+                _ => {}
+            }
             if item.len() > longest.len() {
                 unsafe {
                     longest.set_len(item.len());
@@ -52,9 +67,13 @@ pub(super) fn maximal_do(brk: &DatrieBrk, input: &BreakInput) -> Vec<usize> {
             break;
         }
 
-        pos_char += from_utf8(&longest).unwrap().chars().count();
-        out.push(pos_char);
+        let longest_txt = unsafe { from_utf8_unchecked(&longest) };
+        let longest_char_len = longest_txt.chars().count();
+
+        pos += longest_char_len;
+        out.push(pos);
         txt = &txt[longest.len()..];
+        hints = &hints[longest.len()..];
     }
 
     out
@@ -76,6 +95,7 @@ impl<'a> LongestSubstring<'a> {
 impl<'a> Automaton for LongestSubstring<'a> {
     type State = Option<usize>;
 
+    #[inline]
     fn start(&self) -> Self::State {
         Some(0)
     }
@@ -87,6 +107,7 @@ impl<'a> Automaton for LongestSubstring<'a> {
         }
     }
 
+    #[inline]
     fn can_match(&self, pos: &Option<usize>) -> bool {
         pos.is_some()
     }

@@ -17,8 +17,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 use crate::thbrk::{DatrieBrk, TisBreaker};
+use crate::utils;
 use itertools::Itertools;
-use libc::{c_char, c_int};
+use libc::{c_char, c_int, c_uchar};
 use std::ffi::{CStr, OsStr};
 use std::io::{Cursor, Write};
 use std::path::Path;
@@ -104,7 +105,7 @@ pub unsafe extern "C" fn th_brk_delete(brk: *mut DefaultBreaker) {
 #[no_mangle]
 pub unsafe extern "C" fn th_brk_find_breaks(
     brk: &mut DefaultBreaker,
-    s: *const c_char,
+    s: *const c_uchar,
     pos: *const c_int,
     pos_sz: libc::size_t,
 ) -> c_int {
@@ -112,9 +113,9 @@ pub unsafe extern "C" fn th_brk_find_breaks(
         return 0;
     }
 
-    let input = CStr::from_ptr(s);
+    let input = slice::from_raw_parts(s, utils::uchar_len(s));
 
-    let out = brk.find_breaks_tis(input.to_bytes(), pos_sz); // TODO: Optimize
+    let out = brk.find_breaks_tis(input, pos_sz); // TODO: Optimize
     let pos = slice::from_raw_parts_mut(pos as *mut i32, pos_sz);
     pos[..out.len()].copy_from_slice(
         &out.iter()
@@ -142,12 +143,12 @@ pub unsafe extern "C" fn th_brk_find_breaks(
 #[no_mangle]
 pub unsafe extern "C" fn th_brk_insert_breaks(
     brk: &mut DefaultBreaker,
-    s: *const c_char,
-    out: *mut c_char,
+    s: *const c_uchar,
+    out: *mut c_uchar,
     out_sz: libc::size_t,
     delim: *const c_char,
 ) -> c_int {
-    let input = CStr::from_ptr(s).to_bytes();
+    let input = slice::from_raw_parts(s, utils::uchar_len(s));
     let delim_s = CStr::from_ptr(delim).to_bytes();
     let out = slice::from_raw_parts_mut(out as *mut u8, out_sz);
     let mut cur = Cursor::new(out);

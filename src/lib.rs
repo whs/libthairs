@@ -20,5 +20,6 @@ mod cursor;
 pub mod data;
 mod thbrk;
 mod thwchar;
+mod utils;
 
 pub use thbrk::{DatrieBrk, TisBreaker};
