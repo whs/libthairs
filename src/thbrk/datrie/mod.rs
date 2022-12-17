@@ -23,7 +23,7 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::{env, io};
 
-use crate::thbrk::TisBreaker;
+use crate::thbrk::{StrBreaker, TisBreaker};
 use encoding_rs::WINDOWS_874;
 use lazy_static::lazy_static;
 
@@ -79,6 +79,13 @@ impl DatrieBrk {
 impl TisBreaker for DatrieBrk {
     fn find_breaks_tis<'a>(&'a self, input: &'a [u8], max_out: usize) -> Vec<usize> {
         let input_str = BreakInput::from_tis(input);
+        breaker::find_breaks(self, &input_str, max_out)
+    }
+}
+
+impl StrBreaker for DatrieBrk {
+    fn find_breaks<'a>(&'a self, input: &'a str, max_out: usize) -> Vec<usize> {
+        let input_str = BreakInput::from_utf(input);
         breaker::find_breaks(self, &input_str, max_out)
     }
 }

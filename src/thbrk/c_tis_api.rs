@@ -104,23 +104,24 @@ pub unsafe extern "C" fn th_brk_delete(brk: *mut DefaultBreaker) {
  */
 #[no_mangle]
 pub unsafe extern "C" fn th_brk_find_breaks(
-    brk: &mut DefaultBreaker,
+    brk: &DefaultBreaker,
     s: *const c_uchar,
     pos: *const c_int,
     pos_sz: libc::size_t,
 ) -> c_int {
-    if s.is_null() || pos.is_null() {
+    if s.is_null() || pos.is_null() || pos_sz == 0 {
         return 0;
     }
 
     let input = slice::from_raw_parts(s, utils::uchar_len(s));
 
-    let out = brk.find_breaks_tis(input, pos_sz); // TODO: Optimize
+    let out = brk.find_breaks_tis(input, pos_sz);
     let pos = slice::from_raw_parts_mut(pos as *mut i32, pos_sz);
     pos[..out.len()].copy_from_slice(
         &out.iter()
+            .copied()
             .take(pos_sz)
-            .map(|i| *i as i32)
+            .map(|i| i as i32)
             .collect::<Vec<i32>>(),
     );
     out.len() as i32
@@ -142,15 +143,19 @@ pub unsafe extern "C" fn th_brk_find_breaks(
  */
 #[no_mangle]
 pub unsafe extern "C" fn th_brk_insert_breaks(
-    brk: &mut DefaultBreaker,
+    brk: &DefaultBreaker,
     s: *const c_uchar,
     out: *mut c_uchar,
     out_sz: libc::size_t,
     delim: *const c_char,
 ) -> c_int {
+    if s.is_null() || out.is_null() || delim.is_null() || out_sz == 0 {
+        return 0;
+    }
+
     let input = slice::from_raw_parts(s, utils::uchar_len(s));
     let delim_s = CStr::from_ptr(delim).to_bytes();
-    let out = slice::from_raw_parts_mut(out as *mut u8, out_sz);
+    let out = slice::from_raw_parts_mut(out, out_sz);
     let mut cur = Cursor::new(out);
 
     // TODO: Use builtin intersperse (rust#79524)

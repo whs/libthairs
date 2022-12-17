@@ -18,6 +18,7 @@
 
 mod brkpos;
 mod c_tis_api;
+mod c_w_api;
 mod data;
 mod datrie;
 #[cfg(test)]
