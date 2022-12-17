@@ -19,17 +19,15 @@
 use std::io::{Cursor, Write};
 use std::slice;
 
-use encoding_rs::{DecoderResult, EncoderResult, WINDOWS_874};
 use itertools::{Itertools, Position};
 use libc::{c_int, c_uchar, size_t, wchar_t};
 
 use crate::{cursor, utils};
 
-// const REPLACEMENT: u16 = 0xFFFD; // unicode REPLACEMENT CHARACTER
 const WC_ERR: wchar_t = wchar_t::MAX;
 const TH_ERR: c_uchar = c_uchar::MAX;
 
-/// thwchar module implements Thai <> UTF16 conversion with encoding_rs crate
+/// thwchar module implements Thai <> UTF16 conversion
 ///
 /// It is not recommended to use this module in Rust as it has nonstandard handling of invalid
 /// codepoints.
@@ -72,6 +70,20 @@ const MACTHAI2UNI_TABLE: [i32; 128] = [
     0x0e58, 0x0e59, 0x00ae, 0x00a9, WC_ERR, WC_ERR, WC_ERR, WC_ERR,
 ];
 
+const WINTHAI2UNI_TABLE: [i32; 128] = [
+    0xf700, 0xf701, 0xf702, 0xf703, 0xf704, 0x2026, 0xf705, 0xf706, 0xf707, 0xf708, 0xf709, 0xf70a,
+    0xf70b, 0xf70c, 0xf70d, 0xf70e, 0xf70f, 0x2018, 0x2019, 0x201c, 0x201d, 0x2022, 0x2013, 0x2014,
+    0xf710, 0xf711, 0xf712, 0xf713, 0xf714, 0xf715, 0xf716, 0xf717, 0x00a0, 0x0e01, 0x0e02, 0x0e03,
+    0x0e04, 0x0e05, 0x0e06, 0x0e07, 0x0e08, 0x0e09, 0x0e0a, 0x0e0b, 0x0e0c, 0x0e0d, 0x0e0e, 0x0e0f,
+    0x0e10, 0x0e11, 0x0e12, 0x0e13, 0x0e14, 0x0e15, 0x0e16, 0x0e17, 0x0e18, 0x0e19, 0x0e1a, 0x0e1b,
+    0x0e1c, 0x0e1d, 0x0e1e, 0x0e1f, 0x0e20, 0x0e21, 0x0e22, 0x0e23, 0x0e24, 0x0e25, 0x0e26, 0x0e27,
+    0x0e28, 0x0e29, 0x0e2a, 0x0e2b, 0x0e2c, 0x0e2d, 0x0e2e, 0x0e2f, 0x0e30, 0x0e31, 0x0e32, 0x0e33,
+    0x0e34, 0x0e35, 0x0e36, 0x0e37, 0x0e38, 0x0e39, 0x0e3a, WC_ERR, WC_ERR, WC_ERR, WC_ERR, 0x0e3f,
+    0x0e40, 0x0e41, 0x0e42, 0x0e43, 0x0e44, 0x0e45, 0x0e46, 0x0e47, 0x0e48, 0x0e49, 0x0e4a, 0x0e4b,
+    0x0e4c, 0x0e4d, 0x0e4e, 0x0e4f, 0x0e50, 0x0e51, 0x0e52, 0x0e53, 0x0e54, 0x0e55, 0x0e56, 0x0e57,
+    0x0e58, 0x0e59, 0x0e5a, 0x0e5b, 0xf718, 0xf719, 0xf71a, WC_ERR,
+];
+
 #[no_mangle]
 pub unsafe extern "C" fn th_tis2uni(c: c_uchar) -> wchar_t {
     match c {
@@ -82,18 +94,9 @@ pub unsafe extern "C" fn th_tis2uni(c: c_uchar) -> wchar_t {
 
 #[no_mangle]
 pub unsafe extern "C" fn th_winthai2uni(c: c_uchar) -> wchar_t {
-    if c == TH_ERR {
-        return WC_ERR;
-    }
-
-    let mut decoder = WINDOWS_874.new_decoder_without_bom_handling();
-    let mut buf = [0u16; 1];
-    let (out, _, _) = decoder.decode_to_utf16_without_replacement(&[c], &mut buf, true);
-
-    match out {
-        DecoderResult::InputEmpty => buf[0] as wchar_t,
-        DecoderResult::OutputFull => unreachable!(),
-        DecoderResult::Malformed(_, _) => WC_ERR,
+    match c {
+        0..=0x7f => c.into(),
+        _ => WINTHAI2UNI_TABLE[(c - 0x80) as usize],
     }
 }
 
@@ -116,18 +119,20 @@ pub unsafe extern "C" fn th_uni2tis(wc: wchar_t) -> c_uchar {
 
 #[no_mangle]
 pub unsafe extern "C" fn th_uni2winthai(wc: wchar_t) -> c_uchar {
-    if wc == WC_ERR {
-        return TH_ERR;
-    }
-
-    let mut encoder = WINDOWS_874.new_encoder();
-    let mut buf = [0u8; 1];
-    let (out, _, _) = encoder.encode_from_utf16_without_replacement(&[wc as u16], &mut buf, true);
-
-    match out {
-        EncoderResult::InputEmpty => buf[0] as c_uchar,
-        EncoderResult::OutputFull => unreachable!(),
-        EncoderResult::Unmappable(_) => TH_ERR,
+    let c = th_uni2tis(wc);
+    match c {
+        TH_ERR => {
+            match WINTHAI2UNI_TABLE
+                .iter()
+                .copied()
+                .enumerate()
+                .find(|v| v.1 == wc)
+            {
+                Some(v) => (v.0 as u8) + 0x80,
+                None => TH_ERR,
+            }
+        }
+        _ => c,
     }
 }
 
@@ -156,41 +161,16 @@ pub unsafe extern "C" fn th_tis2uni_line(
     result: *mut wchar_t,
     n: size_t,
 ) -> c_int {
-    let input_str = slice::from_raw_parts(s, utils::uchar_len(s));
-    let result_slice = slice::from_raw_parts_mut(result, n);
-    let mut decoder = WINDOWS_874.new_decoder_without_bom_handling();
-    let mut cur = cursor::Cursor::new(result_slice);
+    let input_len = utils::uchar_len(s);
+    let output_len = input_len.min(n);
+    let input_str = slice::from_raw_parts(s, output_len);
+    let mut result_slice = slice::from_raw_parts_mut(result, n);
 
-    let mut output_buf = [0u16; 2];
-
-    for input in input_str.iter().with_position() {
-        let last = match input {
-            Position::Last(_) => true,
-            Position::Only(_) => true,
-            _ => false,
-        };
-        let i = *input.into_inner();
-        if i == TH_ERR {
-            cur.write(WC_ERR);
-            continue;
-        }
-        let (result, _, out_len) =
-            decoder.decode_to_utf16_without_replacement(&[i], &mut output_buf, last);
-        match result {
-            DecoderResult::InputEmpty => {
-                for item in &output_buf[..out_len] {
-                    cur.write(*item as wchar_t);
-                }
-            }
-            DecoderResult::OutputFull => unreachable!(),
-            DecoderResult::Malformed(_, _) => {
-                cur.write(WC_ERR);
-            }
-        }
+    for (idx, item) in input_str.iter().enumerate() {
+        result_slice[idx] = th_tis2uni(*item);
     }
-    let sub_null_bytes = cur.write(0);
-
-    (cur.position() - sub_null_bytes) as c_int
+    result_slice[output_len.min(n - 1)] = 0;
+    output_len as c_int
 }
 
 #[no_mangle]
@@ -200,47 +180,15 @@ pub unsafe extern "C" fn th_uni2tis_line(
     n: size_t,
 ) -> c_int {
     let input_len = utils::wchar_len(s);
-    let input_str = slice::from_raw_parts(s, input_len);
-    let (pre, result_slice, post) = slice::from_raw_parts_mut(result, n).align_to_mut::<u8>();
-    debug_assert!(pre.is_empty());
-    debug_assert!(post.is_empty());
-    let mut cur = Cursor::new(result_slice);
-    let mut encoder = WINDOWS_874.new_encoder();
+    let output_len = input_len.min(n);
+    let input_str = slice::from_raw_parts(s, output_len);
+    let mut result_slice = slice::from_raw_parts_mut(result, n);
 
-    let mut output_buf = [0u8; 4];
-    for input in input_str.iter().with_position() {
-        let last = match input {
-            Position::Last(_) => true,
-            Position::Only(_) => true,
-            _ => false,
-        };
-        let i = *input.into_inner();
-        if i == WC_ERR {
-            let _ = cur.write(&[TH_ERR]);
-            continue;
-        }
-        let input_u16: u16 = match (i).try_into() {
-            Ok(v) => v,
-            Err(_) => {
-                let _ = cur.write(&[TH_ERR]);
-                continue;
-            }
-        };
-        let (result, _, out_len) =
-            encoder.encode_from_utf16_without_replacement(&[input_u16], &mut output_buf, last);
-        let _ = match result {
-            EncoderResult::InputEmpty => cur.write(&output_buf[..out_len]),
-            EncoderResult::OutputFull => unreachable!(),
-            EncoderResult::Unmappable(_) => cur.write(&[TH_ERR]),
-        };
+    for (idx, item) in input_str.iter().enumerate() {
+        result_slice[idx] = th_uni2tis(*item);
     }
-
-    let sub_null_byte = match cur.write(&[0]) {
-        Ok(s) => s as u64,
-        Err(_) => 0,
-    };
-
-    (cur.position() - sub_null_byte) as c_int
+    result_slice[output_len.min(n - 1)] = 0;
+    output_len as c_int
 }
 
 #[cfg(test)]
