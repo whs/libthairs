@@ -124,7 +124,7 @@ pub unsafe extern "C" fn th_brk_wc_insert_breaks(
         Some(v) => v,
         None => return 0,
     };
-    let mut out = slice::from_raw_parts_mut(out, out_sz);
+    let out = slice::from_raw_parts_mut(out, out_sz);
 
     let out_str = Itertools::intersperse(brk.split(&input_str).into_iter(), &delim_str);
     let mut pos = 0;

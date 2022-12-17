@@ -26,7 +26,6 @@ mod test;
 
 pub use self::datrie::DatrieBrk;
 use encoding_rs::WINDOWS_874;
-use std::str::from_utf8_unchecked;
 
 /// TisBreaker implement Thai word breaking algorithm with TIS-620 input
 pub trait TisBreaker {
@@ -62,7 +61,7 @@ pub trait StrBreaker {
             Some(v) => v,
             None => return vec![input],
         };
-        let mut out: Vec<&str> = Vec::new();
+        let mut out: Vec<&str> = Vec::with_capacity(breaks.len() + 1);
         let mut last_ch_pos = 0;
         for (ch_pos, (byte_pos, _)) in input.char_indices().enumerate() {
             if ch_pos == cur_break {

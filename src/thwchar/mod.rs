@@ -16,13 +16,11 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ////////////////////////////////////////////////////////////////////////////////
 
-use std::io::{Cursor, Write};
 use std::slice;
 
-use itertools::{Itertools, Position};
 use libc::{c_int, c_uchar, size_t, wchar_t};
 
-use crate::{cursor, utils};
+use crate::utils;
 
 const WC_ERR: wchar_t = wchar_t::MAX;
 const TH_ERR: c_uchar = c_uchar::MAX;
@@ -164,7 +162,7 @@ pub unsafe extern "C" fn th_tis2uni_line(
     let input_len = utils::uchar_len(s);
     let output_len = input_len.min(n);
     let input_str = slice::from_raw_parts(s, output_len);
-    let mut result_slice = slice::from_raw_parts_mut(result, n);
+    let result_slice = slice::from_raw_parts_mut(result, n);
 
     for (idx, item) in input_str.iter().enumerate() {
         result_slice[idx] = th_tis2uni(*item);
@@ -182,7 +180,7 @@ pub unsafe extern "C" fn th_uni2tis_line(
     let input_len = utils::wchar_len(s);
     let output_len = input_len.min(n);
     let input_str = slice::from_raw_parts(s, output_len);
-    let mut result_slice = slice::from_raw_parts_mut(result, n);
+    let result_slice = slice::from_raw_parts_mut(result, n);
 
     for (idx, item) in input_str.iter().enumerate() {
         result_slice[idx] = th_uni2tis(*item);
