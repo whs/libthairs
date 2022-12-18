@@ -26,7 +26,7 @@ struct TestSample {
     ins_str: String,
 }
 
-pub fn test_thbrk<T: TisBreaker>(breaker: T) {
+pub fn test_thbrk<T: TisBreaker>(breaker: &T) {
     // Port of libthai test_thbrk.c
     let test_samples = vec![
         TestSample {

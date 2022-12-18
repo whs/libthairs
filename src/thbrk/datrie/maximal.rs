@@ -17,7 +17,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 use crate::thbrk::brkpos;
-use crate::thbrk::datrie::BreakInput;
+use crate::thbrk::datrie::{BreakInput, SetStorage};
 /// Thai word break with maximal matching scheme
 use crate::DatrieBrk;
 use fst::{Automaton, IntoStreamer, Streamer};
@@ -44,7 +44,10 @@ pub(super) fn maximal_do(brk: &DatrieBrk, input: &BreakInput) -> Vec<usize> {
     let mut longest = Vec::with_capacity(txt.len());
     while txt.len() > 0 {
         let matcher = LongestSubstring::new(txt);
-        let mut stream = brk.trie.search(matcher).into_stream();
+        let mut stream = match &brk.trie {
+            SetStorage::Vec(t) => t.search(matcher).into_stream(),
+            SetStorage::Mmap(t) => t.search(matcher).into_stream(),
+        };
 
         unsafe {
             longest.set_len(0);

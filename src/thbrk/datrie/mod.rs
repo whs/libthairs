@@ -26,53 +26,66 @@ use std::{env, io};
 use crate::thbrk::{StrBreaker, TisBreaker};
 use encoding_rs::WINDOWS_874;
 use lazy_static::lazy_static;
+use memmap::Mmap;
 
 mod breaker;
 mod loader;
 mod maximal;
 
-pub const DICT_NAME: &str = "thbrk";
-pub const DICT_DIR: &str = "/usr/share/libthai";
-
 lazy_static! {
-    pub static ref SHARED_BRK: DatrieBrk =
-        DatrieBrk::default().expect("unable to load default dict");
+    static ref LIBTHAI_PATH: PathBuf = PathBuf::from("/usr/share/libthai/thbrk.tri");
+    static ref NATIVE_PATH: PathBuf = PathBuf::from(format!("{}/thbrk.fst", env!("OUT_DIR")));
+    pub static ref SHARED_BRK: DatrieBrk = default_breaker().expect("unable to load default dict");
+}
+
+enum SetStorage {
+    Vec(fst::Set<Vec<u8>>),
+    Mmap(fst::Set<Mmap>),
 }
 
 pub struct DatrieBrk {
-    trie: fst::Set<Vec<u8>>,
+    trie: SetStorage,
+}
+
+pub fn default_breaker() -> io::Result<DatrieBrk> {
+    // brk_load_default_dict
+    match env::var("LIBTHAI_DICTDIR") {
+        Ok(dict_dir) => {
+            let mut path = PathBuf::from(dict_dir);
+            path.push("thbrk.tri");
+            DatrieBrk::from_datrie_path(&path)
+        }
+        Err(_) => {
+            let out = DatrieBrk::from_native_path(&NATIVE_PATH);
+            if out.is_ok() {
+                return Ok(out.unwrap());
+            }
+            DatrieBrk::from_datrie_path(&LIBTHAI_PATH)
+        }
+    }
 }
 
 impl DatrieBrk {
-    pub fn new(dict_path: Option<&Path>) -> io::Result<Self> {
-        match dict_path {
-            Some(path) => Self::from_path(Path::new(path)),
-            None => Self::default(),
-        }
-    }
-
-    pub fn from_path(dict_path: &Path) -> io::Result<Self> {
+    pub fn from_datrie_path(dict_path: &Path) -> io::Result<Self> {
         let fp = File::open(dict_path)?;
         let mut buf = BufReader::new(fp);
         let fst = loader::load(&mut buf)?;
 
-        Ok(Self { trie: fst })
+        Ok(Self {
+            trie: SetStorage::Vec(fst),
+        })
     }
 
-    fn default() -> io::Result<Self> {
-        // brk_load_default_dict
-        match env::var("LIBTHAI_DICTDIR") {
-            Ok(dict_dir) => {
-                let mut path = PathBuf::from(dict_dir);
-                path.push(format!("{}.tri", DICT_NAME));
-                Self::from_path(&path)
-            }
-            Err(_) => {
-                let mut path = PathBuf::from(DICT_DIR);
-                path.push(format!("{}.tri", DICT_NAME));
-                Self::from_path(&path)
-            }
-        }
+    pub fn from_native_path(dict_path: &Path) -> io::Result<Self> {
+        let fp = File::open(dict_path)?;
+        let mmap = unsafe { Mmap::map(&fp)? };
+        let fst = fst::Set::new(mmap).or(Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "unable to load",
+        )))?;
+        Ok(Self {
+            trie: SetStorage::Mmap(fst),
+        })
     }
 }
 
@@ -129,12 +142,11 @@ impl<'a> BreakInput<'a> {
 
 #[cfg(test)]
 mod tests {
+    use crate::thbrk::datrie::SHARED_BRK;
     use crate::thbrk::test::test_thbrk;
-    use crate::DatrieBrk;
 
     #[test]
     fn thbrk() {
-        let breaker = DatrieBrk::default().unwrap();
-        test_thbrk(breaker);
+        test_thbrk(&*SHARED_BRK);
     }
 }

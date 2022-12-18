@@ -16,6 +16,7 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ////////////////////////////////////////////////////////////////////////////////
 
+use crate::thbrk::datrie::default_breaker;
 use crate::thbrk::{DatrieBrk, TisBreaker};
 use crate::utils;
 use itertools::Itertools;
@@ -25,8 +26,6 @@ use std::io::{Cursor, Write};
 use std::path::Path;
 use std::ptr::null_mut;
 use std::slice;
-
-pub type DefaultBreaker = DatrieBrk;
 
 /**
  * @brief  Create a dictionary-based word breaker
@@ -52,7 +51,7 @@ pub type DefaultBreaker = DatrieBrk;
  * (Available since version 0.1.25, libthai.so.0.3.0)
  */
 #[no_mangle]
-pub unsafe extern "C" fn th_brk_new(dictpath: *const c_char) -> *mut DefaultBreaker {
+pub unsafe extern "C" fn th_brk_new(dictpath: *const c_char) -> *mut DatrieBrk {
     let path = dictpath.as_ref().map(|v| {
         let path_str = CStr::from_ptr(v);
         #[cfg(unix)]
@@ -67,7 +66,10 @@ pub unsafe extern "C" fn th_brk_new(dictpath: *const c_char) -> *mut DefaultBrea
             OsString::from_wide(path_str.to_bytes())
         }
     });
-    let brk = DefaultBreaker::new(path.map(|v| Path::new(v)));
+    let brk = match path {
+        Some(path) => DatrieBrk::from_datrie_path(Path::new(path)),
+        None => default_breaker(),
+    };
     match brk {
         Ok(brk) => Box::into_raw(Box::new(brk)),
         Err(e) => {
@@ -85,7 +87,7 @@ pub unsafe extern "C" fn th_brk_new(dictpath: *const c_char) -> *mut DefaultBrea
  * Frees memory associated with the word breaker.
  */
 #[no_mangle]
-pub unsafe extern "C" fn th_brk_delete(brk: *mut DefaultBreaker) {
+pub unsafe extern "C" fn th_brk_delete(brk: *mut DatrieBrk) {
     drop(Box::from_raw(brk));
 }
 
@@ -104,7 +106,7 @@ pub unsafe extern "C" fn th_brk_delete(brk: *mut DefaultBreaker) {
  */
 #[no_mangle]
 pub unsafe extern "C" fn th_brk_find_breaks(
-    brk: &DefaultBreaker,
+    brk: &DatrieBrk,
     s: *const c_uchar,
     pos: *const c_int,
     pos_sz: libc::size_t,
@@ -140,7 +142,7 @@ pub unsafe extern "C" fn th_brk_find_breaks(
  */
 #[no_mangle]
 pub unsafe extern "C" fn th_brk_insert_breaks(
-    brk: &DefaultBreaker,
+    brk: &DatrieBrk,
     s: *const c_uchar,
     out: *mut c_uchar,
     out_sz: libc::size_t,

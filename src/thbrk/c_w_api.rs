@@ -16,10 +16,9 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ////////////////////////////////////////////////////////////////////////////////
 
-use crate::thbrk::c_tis_api::DefaultBreaker;
 use crate::thbrk::datrie::SHARED_BRK;
 use crate::thbrk::StrBreaker;
-use crate::utils;
+use crate::{utils, DatrieBrk};
 use itertools::Itertools;
 use libc::{c_int, size_t, wchar_t};
 use std::slice;
@@ -41,7 +40,7 @@ use std::slice;
  */
 #[no_mangle]
 pub unsafe extern "C" fn th_brk_wc_find_breaks(
-    brk: &DefaultBreaker,
+    brk: &DatrieBrk,
     s: *const wchar_t,
     pos: *mut c_int,
     pos_sz: size_t,
@@ -94,7 +93,7 @@ pub unsafe extern "C" fn th_wbrk(s: *const wchar_t, pos: *mut c_int, pos_sz: siz
  */
 #[no_mangle]
 pub unsafe extern "C" fn th_brk_wc_insert_breaks(
-    brk: &DefaultBreaker,
+    brk: &DatrieBrk,
     s: *const wchar_t,
     out: *mut wchar_t,
     out_sz: size_t,

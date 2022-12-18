@@ -12,7 +12,7 @@ crate-type = ["cdylib"]
 
 [profile.release]
 debug = 1
-strip = true
+#strip = true
 lto = true
 codegen-units = 1
 
@@ -22,4 +22,8 @@ itertools = "0.10"
 datrie = { path = "datrie" }
 lazy_static = "1"
 encoding_rs = "0.8"
+fst = "0.4"
+memmap = "0.7.0"
+
+[build-dependencies]
 fst = "0.4"
