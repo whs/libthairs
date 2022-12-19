@@ -20,41 +20,44 @@ use encoding_rs::{EncoderResult, WINDOWS_874};
 use libc::{c_uchar, wchar_t};
 
 /// Get the size of NULL terminated *wchar_t
+#[inline]
 pub unsafe fn wchar_len(s: *const wchar_t) -> usize {
-    let mut cur = s;
-    for i in 0usize.. {
-        if *cur == 0 {
-            return i;
-        }
-        cur = cur.add(1usize);
-    }
-    unreachable!()
+    libc::wcslen(s) as usize
 }
 
 /// Get the size of NULL terminated *uchar_t
+#[inline]
 pub unsafe fn uchar_len(s: *const c_uchar) -> usize {
-    let mut cur = s;
-    for i in 0usize.. {
-        if *cur == 0 {
-            return i;
-        }
-        cur = cur.add(1usize);
-    }
-    unreachable!()
+    libc::strlen(s.cast()) as usize
 }
 
 pub fn as_str(s: &[char]) -> String {
-    let len = s.iter().map(|v| v.len_utf8()).sum();
-    let mut buf = vec![0; len];
-    let mut cur: &mut [u8] = &mut buf;
+    let mut out = String::new();
+    as_str_buf(s, &mut out);
+    out
+}
 
-    for c in s {
-        let c_len = c.len_utf8();
-        c.encode_utf8(cur);
-        cur = &mut cur[c_len..];
+pub fn as_str_buf(s: &[char], out: &mut String) {
+    out.clear();
+    out.extend(s);
+}
+
+pub fn len_utf8(s: &[char]) -> usize {
+    s.iter().map(|c| c.len_utf8()).sum()
+}
+
+pub fn chars_as_bytes(s: &[char], out: &mut Vec<u8>) {
+    out.clear();
+    out.resize(len_utf8(s), 0);
+    let mut cur: &mut [u8] = out;
+
+    for ch in s {
+        let encoded_len = {
+            let encode_out = ch.encode_utf8(cur);
+            encode_out.len()
+        };
+        cur = &mut cur[encoded_len..];
     }
-
-    unsafe { String::from_utf8_unchecked(buf) }
 }
 
 /// Encode a UTF-8 string to Windows-874, replacing any invalid characters with err_replacement

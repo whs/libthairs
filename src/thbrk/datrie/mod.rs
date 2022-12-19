@@ -24,6 +24,7 @@ use std::path::{Path, PathBuf};
 use std::{env, io};
 
 use crate::thbrk::{StrBreaker, TisBreaker};
+use crate::utils;
 use encoding_rs::WINDOWS_874;
 use lazy_static::lazy_static;
 use memmap::Mmap;
@@ -136,7 +137,11 @@ impl<'a> BreakInput<'a> {
 
     /// Return a copy of the String stored
     pub fn str(&'a self) -> String {
-        crate::utils::as_str(&self.char)
+        utils::as_str(&self.char)
+    }
+
+    pub fn str_buf(&'a self, out: &mut String) {
+        utils::as_str_buf(&self.char, out)
     }
 }
 

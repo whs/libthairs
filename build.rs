@@ -59,7 +59,7 @@ fn build_data() {
         }
 
         let fp = BufReader::new(fp.unwrap());
-        entries.extend(fp.lines().filter(|v| v.is_ok()).map(|i| i.unwrap()));
+        entries.extend(fp.lines().filter_map(|v| v.ok()));
     }
 
     entries.sort();

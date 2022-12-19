@@ -19,29 +19,74 @@
 use crate::thbrk::brkpos;
 use crate::thbrk::datrie::{BreakInput, SetStorage};
 /// Thai word break with maximal matching scheme
-use crate::DatrieBrk;
+use crate::{utils, DatrieBrk};
 use fst::{Automaton, IntoStreamer, Streamer};
-use std::iter;
 use std::str::from_utf8_unchecked;
 
-/// maximal_do return character position to cut
-pub(super) fn maximal_do(brk: &DatrieBrk, input: &BreakInput) -> Vec<usize> {
-    // expand brkpos::hints to index of [u8]
-    let brkpos_hints_expanded = brkpos::hints(&input.tis)
-        .into_iter()
-        .enumerate()
-        .flat_map(|(index, can_cut)| {
-            let ch = input.char[index];
-            iter::once(can_cut).chain(iter::repeat(false).take(ch.len_utf8() - 1))
-        })
-        .collect::<Vec<bool>>();
-    let mut hints: &[bool] = &brkpos_hints_expanded;
+#[derive(Default)]
+pub(super) struct MaximalBuffers {
+    brkpos: Vec<bool>,
+    brkpos_expanded: Vec<bool>,
+    input: Vec<u8>,
+    out: Vec<usize>,
+    longest_str: Vec<u8>,
+}
 
-    let mut txt: &str = &input.str();
-    debug_assert_eq!(brkpos_hints_expanded.len(), txt.len());
-    let mut out = Vec::new();
+impl MaximalBuffers {
+    fn reset_with_min_cap(&mut self, len: usize) {
+        self.out.clear();
+
+        let brkpos_cap = len.checked_sub(self.brkpos.capacity());
+        match brkpos_cap {
+            Some(l) => self.brkpos.reserve_exact(l),
+            None => {}
+        }
+
+        let expanded_cap = (len * 4).checked_sub(self.brkpos_expanded.capacity());
+        match expanded_cap {
+            Some(l) => self.brkpos_expanded.reserve_exact(l),
+            None => {}
+        }
+
+        let longest_str_cap = len.checked_sub(self.longest_str.capacity());
+        match longest_str_cap {
+            Some(l) => self.longest_str.reserve_exact(l),
+            None => {}
+        }
+
+        let input_cap = len.checked_sub(self.input.capacity());
+        match input_cap {
+            Some(l) => self.input.reserve_exact(l),
+            None => {}
+        }
+    }
+}
+
+/// maximal_do return character position to cut
+pub(super) fn maximal_do<'a>(
+    brk: &DatrieBrk,
+    input: &BreakInput,
+    buf: &'a mut MaximalBuffers,
+) -> &'a [usize] {
+    // TODO: There's a problem with non-dictionary matchable that c libthai doesn't have..
+    buf.reset_with_min_cap(input.char.len());
+
+    utils::chars_as_bytes(&input.char, &mut buf.input);
+    let mut txt: &[u8] = &buf.input;
+
+    brkpos::hints(&input.tis, &mut buf.brkpos);
+    brkpos::expand_hint_bytes(
+        &input.char,
+        txt.len(),
+        &buf.brkpos,
+        &mut buf.brkpos_expanded,
+    );
+    let mut hints: &[bool] = &buf.brkpos_expanded;
+    debug_assert_eq!(hints.len(), txt.len());
+
+    let mut out = &mut buf.out;
     let mut pos = 0;
-    let mut longest = Vec::with_capacity(txt.len());
+    let mut longest = &mut buf.longest_str;
     while txt.len() > 0 {
         let matcher = LongestSubstring::new(txt);
         let mut stream = match &brk.trie {
@@ -54,9 +99,8 @@ pub(super) fn maximal_do(brk: &DatrieBrk, input: &BreakInput) -> Vec<usize> {
         }
 
         while let Some(item) = stream.next() {
-            match hints.get(item.len()) {
-                Some(false) => continue,
-                _ => {}
+            if item.len() < hints.len() && !hints[item.len()] {
+                continue;
             }
             if item.len() > longest.len() {
                 unsafe {
@@ -79,7 +123,7 @@ pub(super) fn maximal_do(brk: &DatrieBrk, input: &BreakInput) -> Vec<usize> {
         hints = &hints[longest.len()..];
     }
 
-    out
+    &buf.out
 }
 
 #[derive(Debug, Clone)]
@@ -88,10 +132,9 @@ struct LongestSubstring<'a> {
 }
 
 impl<'a> LongestSubstring<'a> {
-    fn new(str: &'a str) -> Self {
-        Self {
-            str: str.as_bytes(),
-        }
+    #[inline]
+    fn new(str: &'a [u8]) -> Self {
+        Self { str }
     }
 }
 
@@ -103,6 +146,7 @@ impl<'a> Automaton for LongestSubstring<'a> {
         Some(0)
     }
 
+    #[inline]
     fn is_match(&self, state: &Self::State) -> bool {
         match *state {
             Some(v) if v <= self.str.len() => true,

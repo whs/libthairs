@@ -17,6 +17,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 use crate::thbrk::data::*;
+use crate::thbrk::datrie::maximal::MaximalBuffers;
 use crate::thbrk::datrie::{maximal, BreakInput};
 use crate::DatrieBrk;
 
@@ -33,6 +34,7 @@ pub(super) fn find_breaks(brk: &DatrieBrk, input: &BreakInput, max_out: usize) -
     let mut acronym_end = 0;
     let mut prev_class = brk_class(tis_input[0]);
     let mut effective_class = prev_class;
+    let mut maximal_buf = MaximalBuffers::default();
 
     let mut p = 1;
 
@@ -60,7 +62,7 @@ pub(super) fn find_breaks(brk: &DatrieBrk, input: &BreakInput, max_out: usize) -
 
             // break chunk if leaving Thai chunk
             if prev_class == BreakClass::Thai && new_class != BreakClass::Thai && p > chunk {
-                let n_brk = maximal::maximal_do(brk, &input.substring(chunk, p));
+                let n_brk = maximal::maximal_do(brk, &input.substring(chunk, p), &mut maximal_buf);
                 out.extend(n_brk.into_iter().map(|i| i + chunk));
 
                 // remove last break if at string end
@@ -108,7 +110,7 @@ pub(super) fn find_breaks(brk: &DatrieBrk, input: &BreakInput, max_out: usize) -
 
     // break last Thai non-acronym chunk
     if prev_class == BreakClass::Thai && acronym_end <= chunk && out.len() < max_out {
-        let n_brk = maximal::maximal_do(brk, &input.substring(chunk, p));
+        let n_brk = maximal::maximal_do(brk, &input.substring(chunk, p), &mut maximal_buf);
         out.extend(n_brk.into_iter().map(|i| i + chunk));
 
         // remove last break if at string end

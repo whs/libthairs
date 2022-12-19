@@ -168,7 +168,7 @@ pub unsafe extern "C" fn th_brk_insert_breaks(
     let _ = cur.write(&[0]);
     // ensure the last character is null terminated
     let last_pos = cur.position();
-    cur.get_mut()[last_pos as usize] = 0;
+    cur.into_inner()[last_pos as usize] = 0;
 
     last_pos as c_int
 }

@@ -16,10 +16,11 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ////////////////////////////////////////////////////////////////////////////////
 
-use crate::data;
+use crate::{data, utils};
 
-pub fn hints(input: &[u8]) -> Vec<bool> {
-    let mut hints = vec![false; input.len()];
+pub fn hints(input: &[u8], out: &mut Vec<bool>) {
+    out.clear();
+    out.resize(input.len(), false);
 
     let mut i = 0;
     while i < input.len() {
@@ -33,7 +34,7 @@ pub fn hints(input: &[u8]) -> Vec<bool> {
                 && input[i + 1] == data::TIS_ไม้ไต่คู้
                 && (input[i + 2] == data::TIS_อ || input[i + 2] == data::TIS_ว)
             {
-                hints[i] = true;
+                out[i] = true;
                 i += 4; /* the cons + ไม้ไต่คู้ + อ/ว + cons */
             } else if (i > 0
                 && (input[i - 1] == data::TIS_ไม้หันอากาศ
@@ -45,11 +46,11 @@ pub fn hints(input: &[u8]) -> Vec<bool> {
             {
                 i += 1;
             } else {
-                hints[i] = true;
+                out[i] = true;
                 i += 1;
             }
         } else if input[i] == data::TIS_เ || input[i] == data::TIS_แ {
-            hints[i] = true; /* สระเอ / สระแอ */
+            out[i] = true; /* สระเอ / สระแอ */
             i += 2; /* สระเอ / สระแอ + the supposedly cons */
             if i >= input.len() {
                 break;
@@ -74,15 +75,25 @@ pub fn hints(input: &[u8]) -> Vec<bool> {
                          */
             }
         } else if data::is_leading_vowel(input[i]) {
-            hints[i] = true; // the ldvowel
+            out[i] = true; // the ldvowel
             i += 2; /* the ldvowel + the supposedly cons */
         } else if input[i] == data::TIS_ฤ || input[i] == data::TIS_ฦ {
-            hints[i] = true;
+            out[i] = true;
             i += 1;
         } else {
             i += 1;
         }
     }
+}
 
-    hints
+/// expand output of char-index bitmap to bytes-indexed bitmap, with internal bits set as false
+pub fn expand_hint_bytes(s: &[char], s_len_bytes: usize, input: &[bool], out: &mut Vec<bool>) {
+    out.clear();
+    out.resize(s_len_bytes, false);
+
+    let mut bytes_idx = 0;
+    for (ch_idx, ch) in s.iter().enumerate() {
+        out[bytes_idx] = input[ch_idx];
+        bytes_idx += ch.len_utf8();
+    }
 }
