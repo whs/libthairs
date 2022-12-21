@@ -578,7 +578,7 @@ const CHAR_CLASS: [BreakClass; 256] = [
 ];
 
 #[inline]
-pub fn brk_class(c: u8) -> BreakClass {
+pub const fn brk_class(c: u8) -> BreakClass {
     CHAR_CLASS[c as usize]
 }
 
@@ -621,6 +621,6 @@ const BREAK_TABLE: [[BreakOperation; 15]; 15] = [
 ];
 
 #[inline]
-pub fn brk_op(prev: BreakClass, next: BreakClass) -> BreakOperation {
+pub const fn brk_op(prev: BreakClass, next: BreakClass) -> BreakOperation {
     BREAK_TABLE[prev as usize][next as usize]
 }

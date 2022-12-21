@@ -18,6 +18,7 @@
 
 /// Thai character classifications
 
+// TODO: derive_const#102049
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 enum CharClass {
     Control,
@@ -372,7 +373,7 @@ const CHARACTER_LEVEL_TABLE: [i8; 256] = [
 ];
 
 #[inline]
-fn ctype(c: u8) -> CharClass {
+const fn ctype(c: u8) -> CharClass {
     CTYPE_TABLE[c as usize]
 }
 
@@ -396,13 +397,13 @@ pub fn is_thai(c: u8) -> bool {
 
 /// Is the character an English character?
 #[inline]
-pub fn is_eng(c: u8) -> bool {
+pub const fn is_eng(c: u8) -> bool {
     c & 0x80 == 0
 }
 
 /// Is the character a Thai consonant?
 #[inline]
-pub fn is_th_cons(c: u8) -> bool {
+pub const fn is_th_cons(c: u8) -> bool {
     match ctype(c) {
         CharClass::Consonant(_) => true,
         _ => false,
@@ -411,7 +412,7 @@ pub fn is_th_cons(c: u8) -> bool {
 
 /// Is the character a Thai vowel?
 #[inline]
-pub fn is_th_vowel(c: u8) -> bool {
+pub const fn is_th_vowel(c: u8) -> bool {
     match ctype(c) {
         CharClass::Vowel(_) => true,
         _ => false,
@@ -499,12 +500,12 @@ pub fn is_below_vowel(c: u8) -> bool {
  *   - -1 = below
  */
 #[inline]
-pub fn chlevel(c: u8) -> i8 {
+pub const fn chlevel(c: u8) -> i8 {
     CHARACTER_LEVEL_TABLE[c as usize]
 }
 
 /// Is the character a combining character?
 #[inline]
-pub fn is_comb_char(c: u8) -> bool {
+pub const fn is_comb_char(c: u8) -> bool {
     CHARACTER_LEVEL_TABLE[c as usize] != 0
 }

@@ -68,7 +68,6 @@ pub(super) fn maximal_do<'a>(
     input: &BreakInput,
     buf: &'a mut MaximalBuffers,
 ) -> &'a [usize] {
-    // TODO: There's a problem with non-dictionary matchable that c libthai doesn't have..
     buf.reset_with_min_cap(input.char.len());
 
     utils::chars_as_bytes(&input.char, &mut buf.input);
@@ -84,9 +83,10 @@ pub(super) fn maximal_do<'a>(
     let mut hints: &[bool] = &buf.brkpos_expanded;
     debug_assert_eq!(hints.len(), txt.len());
 
-    let mut out = &mut buf.out;
+    let out = &mut buf.out;
     let mut pos = 0;
-    let mut longest = &mut buf.longest_str;
+    let longest = &mut buf.longest_str;
+
     while txt.len() > 0 {
         let matcher = LongestSubstring::new(txt);
         let mut stream = match &brk.trie {

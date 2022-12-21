@@ -24,8 +24,7 @@ use std::path::{Path, PathBuf};
 use std::{env, io};
 
 use crate::thbrk::{StrBreaker, TisBreaker};
-use crate::utils;
-use encoding_rs::WINDOWS_874;
+use crate::{thwchar, utils};
 use lazy_static::lazy_static;
 use memmap::Mmap;
 
@@ -35,7 +34,7 @@ mod maximal;
 
 lazy_static! {
     static ref LIBTHAI_PATH: PathBuf = PathBuf::from("/usr/share/libthai/thbrk.tri");
-    static ref NATIVE_PATH: PathBuf = PathBuf::from(format!("{}/thbrk.fst", env!("OUT_DIR")));
+    static ref NATIVE_PATH: PathBuf = PathBuf::from(concat!(env!("OUT_DIR"), "/thbrk.fst"));
     pub static ref SHARED_BRK: DatrieBrk = default_breaker().expect("unable to load default dict");
 }
 
@@ -111,17 +110,18 @@ pub(super) struct BreakInput<'a> {
 
 impl<'a> BreakInput<'a> {
     pub(super) fn from_tis(tis: &'a [u8]) -> Self {
-        let (utf, _) = WINDOWS_874.decode_without_bom_handling(tis);
-        debug_assert_eq!(tis.len(), utf.chars().count());
+        let chars = tis
+            .iter()
+            .map(|i| thwchar::tis2uni(*i).unwrap_or(char::MAX))
+            .collect();
         Self {
             tis: Cow::from(tis),
-            char: Cow::from(utf.chars().collect::<Vec<char>>()),
+            char: chars,
         }
     }
 
     pub(super) fn from_utf(utf: &'a str) -> Self {
-        let tis = crate::utils::to_windows874(utf, u8::MAX);
-        debug_assert_eq!(tis.len(), utf.chars().count());
+        let tis = thwchar::str2tis(utf);
         Self {
             tis: Cow::from(tis),
             char: Cow::from(utf.chars().collect::<Vec<char>>()),
@@ -148,10 +148,15 @@ impl<'a> BreakInput<'a> {
 #[cfg(test)]
 mod tests {
     use crate::thbrk::datrie::SHARED_BRK;
-    use crate::thbrk::test::test_thbrk;
+    use crate::thbrk::test::{test_thbrk, test_thwbrk};
 
     #[test]
     fn thbrk() {
         test_thbrk(&*SHARED_BRK);
+    }
+
+    #[test]
+    fn thwbrk() {
+        test_thwbrk(&*SHARED_BRK);
     }
 }

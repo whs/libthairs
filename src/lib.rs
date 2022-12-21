@@ -23,3 +23,7 @@ mod thwchar;
 mod utils;
 
 pub use thbrk::{DatrieBrk, TisBreaker};
+pub use thwchar::{
+    macthai2string, macthai2uni, str2macthai, str2tis, str2winthai, tis2string, tis2uni,
+    uni2macthai, uni2tis, uni2winthai, winthai2string, winthai2uni,
+};

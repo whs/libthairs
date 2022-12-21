@@ -72,6 +72,12 @@ fn build_data() {
     builder.finish().unwrap();
 }
 
+fn linker_script() {
+    println!("cargo:rustc-cdylib-link-arg=-fuse-ld=lld");
+    println!("cargo:rustc-cdylib-link-arg=-Wl,--version-script=data/libthai.map");
+}
+
 fn main() {
     build_data();
+    linker_script();
 }

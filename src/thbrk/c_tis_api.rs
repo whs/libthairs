@@ -123,7 +123,7 @@ pub unsafe extern "C" fn th_brk_find_breaks(
     for (idx, v) in out.into_iter().take(pos_sz).enumerate() {
         pos[idx] = v as i32
     }
-    out_len as i32
+    (out_len as c_int).min(pos_sz as c_int)
 }
 
 /**
@@ -153,7 +153,7 @@ pub unsafe extern "C" fn th_brk_insert_breaks(
     }
 
     let input = slice::from_raw_parts(s, utils::uchar_len(s));
-    let delim_s = CStr::from_ptr(delim).to_bytes();
+    let delim_s = slice::from_raw_parts(delim as *const u8, libc::strlen(delim));
     let out = slice::from_raw_parts_mut(out, out_sz);
     let mut cur = Cursor::new(out);
 
@@ -168,7 +168,221 @@ pub unsafe extern "C" fn th_brk_insert_breaks(
     let _ = cur.write(&[0]);
     // ensure the last character is null terminated
     let last_pos = cur.position();
-    cur.into_inner()[last_pos as usize] = 0;
+    let out = cur.into_inner();
+    out[(last_pos as usize).min(out.len() - 1)] = 0;
 
-    last_pos as c_int
+    (last_pos - 1) as c_int
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::thbrk::c_tis_api::{
+        th_brk_delete, th_brk_find_breaks, th_brk_insert_breaks, th_brk_new,
+    };
+    use crate::thbrk::test::{test_thbrk, TEST_SAMPLES};
+    use crate::{thwchar, DatrieBrk, TisBreaker};
+    use itertools::Itertools;
+    use libc::{c_int, c_uchar};
+    use std::ffi::CString;
+    use std::ptr::null;
+
+    struct CBreaker {
+        brk: *mut DatrieBrk,
+    }
+
+    impl CBreaker {
+        fn new() -> CBreaker {
+            let brk = unsafe { th_brk_new(null()) };
+            CBreaker { brk }
+        }
+        fn as_ptr(&self) -> &DatrieBrk {
+            unsafe { &*self.brk as &DatrieBrk }
+        }
+    }
+
+    impl TisBreaker for CBreaker {
+        fn find_breaks_tis<'a>(&'a self, input: &'a [u8], max_out: usize) -> Vec<usize> {
+            let mut out = vec![c_int::MAX; max_out];
+            let mut input_null_terminated = Vec::from(input);
+            input_null_terminated.push(0);
+            let count = unsafe {
+                th_brk_find_breaks(
+                    self.as_ptr(),
+                    input_null_terminated.as_ptr(),
+                    out.as_mut_ptr(),
+                    max_out,
+                )
+            } as usize;
+
+            out.into_iter()
+                .take(count)
+                .map(|item| item as usize)
+                .collect_vec()
+        }
+    }
+
+    impl Drop for CBreaker {
+        fn drop(&mut self) {
+            unsafe { th_brk_delete(self.brk) }
+        }
+    }
+
+    #[test]
+    fn find_breaks() {
+        let breaker = CBreaker::new();
+        test_thbrk(&breaker);
+    }
+
+    #[test]
+    fn find_breaks_zero() {
+        let breaker = CBreaker::new();
+        for case in TEST_SAMPLES.iter() {
+            let mut input_tis = thwchar::str2tis(&case.txt);
+        }
+    }
+
+    #[test]
+    fn find_breaks_under_buffer() {
+        let breaker = CBreaker::new();
+        for case in TEST_SAMPLES.iter() {
+            let mut input_tis = thwchar::str2tis(&case.txt);
+            input_tis.push(0);
+            let mut out = vec![c_int::MAX; 5];
+            let out_len = unsafe {
+                th_brk_find_breaks(
+                    breaker.as_ptr(),
+                    input_tis.as_ptr(),
+                    out.as_mut_ptr(),
+                    out.len(),
+                )
+            } as usize;
+            assert_eq!(out_len, case.brk_pos.len().min(5));
+            assert_eq!(
+                out.into_iter()
+                    .take(out_len)
+                    .map(|v| v as usize)
+                    .collect_vec(),
+                case.brk_pos.iter().copied().take(out_len).collect_vec(),
+            );
+        }
+    }
+
+    #[test]
+    fn find_breaks_exact_buffer() {
+        let breaker = CBreaker::new();
+        for case in TEST_SAMPLES.iter() {
+            let mut input_tis = thwchar::str2tis(&case.txt);
+            input_tis.push(0);
+            let mut out = vec![c_int::MAX; case.brk_pos.len()];
+            let out_len = unsafe {
+                th_brk_find_breaks(
+                    breaker.as_ptr(),
+                    input_tis.as_ptr(),
+                    out.as_mut_ptr(),
+                    out.len(),
+                )
+            } as usize;
+            assert_eq!(out_len, case.brk_pos.len());
+            assert_eq!(
+                out.into_iter().map(|v| v as usize).collect_vec(),
+                case.brk_pos,
+            );
+        }
+    }
+
+    #[test]
+    fn insert_breaks() {
+        let breaker = CBreaker::new();
+        let delim = CString::new("|").unwrap();
+        let mut output_buf = Vec::new();
+
+        for case in TEST_SAMPLES.iter() {
+            let mut input_tis = thwchar::str2tis(&case.txt);
+            let mut output_tis = thwchar::str2tis(&case.ins_str);
+            input_tis.push(0);
+            output_tis.push(0);
+
+            output_buf.resize(input_tis.len() * 2, c_uchar::MAX);
+
+            let len = unsafe {
+                th_brk_insert_breaks(
+                    breaker.as_ptr(),
+                    input_tis.as_ptr(),
+                    output_buf.as_mut_ptr(),
+                    output_buf.len(),
+                    delim.as_ptr(),
+                )
+            } as usize;
+            output_buf.truncate(len + 1);
+
+            assert_eq!(output_tis, output_buf);
+        }
+    }
+
+    #[test]
+    fn insert_breaks_under_buffer() {
+        let breaker = CBreaker::new();
+        let delim = CString::new("|").unwrap();
+        let mut output_buf = vec![c_uchar::MAX; 5];
+
+        for case in TEST_SAMPLES.iter() {
+            let mut input_tis = thwchar::str2tis(&case.txt);
+            input_tis.push(0);
+
+            let mut output_tis = thwchar::str2tis(&case.ins_str);
+            output_tis.truncate(5);
+            if output_tis.len() == 5 {
+                output_tis[4] = 0;
+            } else {
+                output_tis.push(0);
+            }
+            assert!(output_tis.len() <= 5);
+
+            output_buf.fill(c_uchar::MAX);
+
+            let len = unsafe {
+                th_brk_insert_breaks(
+                    breaker.as_ptr(),
+                    input_tis.as_ptr(),
+                    output_buf.as_mut_ptr(),
+                    output_buf.len(),
+                    delim.as_ptr(),
+                )
+            } as usize;
+            assert_eq!(len, output_tis.len() - 1);
+
+            assert_eq!(output_tis, &output_buf[0..(len + 1).min(output_buf.len())]);
+        }
+    }
+
+    #[test]
+    fn insert_breaks_exact_buffer() {
+        let breaker = CBreaker::new();
+        let delim = CString::new("|").unwrap();
+        let mut output_buf = Vec::new();
+
+        for case in TEST_SAMPLES.iter() {
+            let mut input_tis = thwchar::str2tis(&case.txt);
+            input_tis.push(0);
+
+            let mut output_tis = thwchar::str2tis(&case.ins_str);
+            output_tis.push(0);
+
+            output_buf.resize(output_tis.len(), c_uchar::MAX);
+
+            let len = unsafe {
+                th_brk_insert_breaks(
+                    breaker.as_ptr(),
+                    input_tis.as_ptr(),
+                    output_buf.as_mut_ptr(),
+                    output_buf.len(),
+                    delim.as_ptr(),
+                )
+            } as usize;
+            assert_eq!(len, output_tis.len() - 1);
+            output_buf.truncate(len + 1);
+
+            assert_eq!(&output_tis, &output_buf);
+        }
+    }
 }

@@ -16,7 +16,7 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ////////////////////////////////////////////////////////////////////////////////
 
-use crate::{data, utils};
+use crate::data;
 
 pub fn hints(input: &[u8], out: &mut Vec<bool>) {
     out.clear();

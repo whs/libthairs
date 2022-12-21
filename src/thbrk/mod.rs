@@ -25,7 +25,7 @@ mod datrie;
 mod test;
 
 pub use self::datrie::DatrieBrk;
-use encoding_rs::WINDOWS_874;
+use crate::thwchar;
 
 /// TisBreaker implement Thai word breaking algorithm with TIS-620 input
 pub trait TisBreaker {
@@ -33,7 +33,7 @@ pub trait TisBreaker {
 
     fn split_tis<'a>(&'a self, input: &'a [u8]) -> Vec<&[u8]> {
         let breaks = self.find_breaks_tis(input, input.len());
-        let mut out = Vec::new();
+        let mut out = Vec::with_capacity(breaks.len() + 1);
 
         let mut last_break = 0;
         for brk in breaks {
@@ -81,7 +81,7 @@ pub trait StrBreaker {
 
 impl TisBreaker for dyn StrBreaker {
     fn find_breaks_tis<'a>(&'a self, input: &'a [u8], max_out: usize) -> Vec<usize> {
-        let (input_utf, _) = WINDOWS_874.decode_without_bom_handling(input);
+        let input_utf = thwchar::tis2string(input);
         self.find_breaks(&input_utf, max_out)
     }
 }

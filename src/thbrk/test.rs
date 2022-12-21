@@ -16,19 +16,19 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ////////////////////////////////////////////////////////////////////////////////
 
-use crate::thbrk::TisBreaker;
-use encoding_rs::WINDOWS_874;
+use crate::thbrk::{StrBreaker, TisBreaker};
+use crate::thwchar;
 use itertools::Itertools;
+use lazy_static::lazy_static;
 
-struct TestSample {
-    txt: String,
-    brk_pos: Vec<usize>,
-    ins_str: String,
+pub(crate) struct TestSample {
+    pub(crate) txt: String,
+    pub(crate) brk_pos: Vec<usize>,
+    pub(crate) ins_str: String,
 }
 
-pub fn test_thbrk<T: TisBreaker>(breaker: &T) {
-    // Port of libthai test_thbrk.c
-    let test_samples = vec![
+lazy_static! {
+    pub(crate) static ref TEST_SAMPLES: Vec<TestSample> = vec![
         TestSample {
             txt: "".to_string(),
             brk_pos: vec![],
@@ -90,22 +90,29 @@ pub fn test_thbrk<T: TisBreaker>(breaker: &T) {
             brk_pos: vec![6, 11, 16, 22, 26, 30, 33, 35, 39, 46, 49, 52],
             ins_str: "พันธุ์|ข้าว |กข43 |น้ำตาล|ต่ำ |กิโล|ละ |40|บาท |กระดาษ |A4 |ใน |4.3BSD".to_string(),
         },
+        TestSample {
+            txt: "ทดสอบภาษาาาาาไทย".to_string(),
+            brk_pos: vec![5, 7],
+            ins_str: "ทดสอบ|ภา|ษาาาาาไทย".to_string(),
+        },
     ];
+}
 
-    for (index, case) in test_samples.iter().enumerate() {
-        // utf8_to_tis
-        let (input_tis, _, _) = WINDOWS_874.encode(&case.txt);
-        let (output_tis, _, _) = WINDOWS_874.encode(&case.ins_str);
+pub fn test_thbrk<T: TisBreaker>(breaker: &T) {
+    // Port of libthai test_thbrk.c
+    for (index, case) in TEST_SAMPLES.iter().enumerate() {
+        let input_tis = thwchar::str2tis(&case.txt);
+        let output_tis = thwchar::str2tis(&case.ins_str);
 
         let break_string: Vec<u8> =
             Itertools::intersperse(breaker.split_tis(&input_tis).into_iter(), "|".as_bytes())
                 .flatten()
                 .cloned()
                 .collect();
-        let (break_string_utf, _, _) = WINDOWS_874.decode(&break_string);
+        let break_string_utf = thwchar::tis2string(&break_string);
         assert_eq!(
             break_string,
-            output_tis.as_ref(),
+            output_tis,
             "Failed at case {}: brk \"{}\" != expected \"{}\"",
             index + 1,
             break_string_utf,
@@ -113,6 +120,30 @@ pub fn test_thbrk<T: TisBreaker>(breaker: &T) {
         );
 
         let res = breaker.find_breaks_tis(&input_tis, input_tis.len());
+        assert_eq!(
+            res,
+            case.brk_pos,
+            "Failed at case {}: brk {:?} != expected {:?}",
+            index + 1,
+            res,
+            case.brk_pos
+        );
+    }
+}
+
+pub fn test_thwbrk<T: StrBreaker>(breaker: &T) {
+    for (index, case) in TEST_SAMPLES.iter().enumerate() {
+        let break_string = breaker.split(&case.txt).join("|");
+        assert_eq!(
+            break_string,
+            case.ins_str,
+            "Failed at case {}: brk \"{}\" != expected \"{}\"",
+            index + 1,
+            break_string,
+            case.ins_str,
+        );
+
+        let res = breaker.find_breaks(&case.txt, case.txt.len());
         assert_eq!(
             res,
             case.brk_pos,
