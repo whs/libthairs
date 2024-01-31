@@ -18,7 +18,7 @@ codegen-units = 1
 
 [dependencies]
 libc = "0.2"
-itertools = "0.10"
+itertools = "0.12"
 datrie = { path = "datrie" }
 lazy_static = "1"
 fst = "0.4"

@@ -174,10 +174,11 @@ unsafe impl Sync for Trie {}
 #[cfg(test)]
 mod test {
     use crate::Trie;
+    use std::ffi::OsStr;
 
     #[test]
     fn load_error() {
-        let out = Trie::from_file("!@#$!@#$%!@$%^^.");
+        let out = Trie::from_file(OsStr::new("!@#$!@#$%!@$%^^."));
         assert!(out.is_err());
     }
 }
