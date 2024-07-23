@@ -1,0 +1,28 @@
+[package]
+name = "datrie"
+version = "0.1.0"
+edition = "2021"
+license = "LGPL-2.1"
+
+[lib]
+crate-type = ["cdylib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = ["cffi"]
+cffi = ["dep:libc"]
+test_cdatrie = []
+
+[dependencies]
+byteorder = "1"
+range-map = "0.2"
+arrayvec = "0.7.4"
+null-terminated = "0.3.17"
+libc = {version = "0.2.152", optional = true}
+
+[dev-dependencies]
+# flake doesn't like this
+#cdatrie = { path = "../cdatrie" }
+
+[build-dependencies]
+cbindgen = "0.26.0"
