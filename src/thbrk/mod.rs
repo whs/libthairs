@@ -1,5 +1,10 @@
-use crate::src::thbrk::brk_common::{brk_load_default_dict_rs, thchar_t, ThTrie};
-use crate::src::thbrk::brk_ctype::{brk_class, brk_op, BrkClass, BrkOp};
+mod common;
+mod ctype;
+mod maximal;
+
+use crate::thbrk::common::{brk_load_default_dict_rs, ThTrie};
+use crate::thbrk::ctype::{brk_class, brk_op, BrkClass, BrkOp};
+use crate::thctype::thchar_t;
 use ::libc;
 use std::ffi::{CStr, OsStr};
 use std::os::unix::ffi::OsStrExt;

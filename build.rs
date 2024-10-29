@@ -18,6 +18,8 @@ fn cbindgen_generate() {
         .with_include_version(true)
         .with_cpp_compat(true)
         .with_include("stddef.h")
+        .rename_item("BrkOp", "brk_op_t")
+        .rename_item("BrkClass", "brk_class_t")
         .generate()
         .expect("Unable to generate bindings")
         .write_to_file("include/thailib.h");

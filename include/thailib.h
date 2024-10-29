@@ -9,31 +9,7 @@
 #include <stdlib.h>
 #include "stddef.h"
 
-#define TIS_KO_KAI (int)161
-
-#define TIS_RU (int)196
-
-#define TIS_LU (int)198
-
-#define TIS_WO_WAEN (int)199
-
-#define TIS_O_ANG (int)205
-
-#define TIS_SARA_A (int)208
-
-#define TIS_MAI_HAN_AKAT (int)209
-
-#define TIS_SARA_AA (int)210
-
-#define TIS_SARA_UEE (int)215
-
-#define TIS_SARA_E (int)224
-
-#define TIS_SARA_AE (int)225
-
-#define TIS_MAITAIKHU (int)231
-
-#define TIS_THANTHAKHAT (int)236
+#define MAX_ACRONYM_FRAG_LEN (int)3
 
 #define INT_MAX __INT_MAX__
 
@@ -43,55 +19,187 @@
 
 #define RECOVERED_WORDS (int)3
 
-#define MAX_ACRONYM_FRAG_LEN (int)3
+#define TIS_KO_KAI 161
 
-#define TIS_SARA_AM (int)211
+#define TIS_KHO_KHAI 162
+
+#define TIS_KHO_KHUAT 163
+
+#define TIS_KHO_KHWAI 164
+
+#define TIS_KHO_KHON 165
+
+#define TIS_KHO_RAKHANG 166
+
+#define TIS_NGO_NGU 167
+
+#define TIS_CHO_CHAN 168
+
+#define TIS_CHO_CHING 169
+
+#define TIS_CHO_CHANG 170
+
+#define TIS_SO_SO 171
+
+#define TIS_CHO_CHOE 172
+
+#define TIS_YO_YING 173
+
+#define TIS_DO_CHADA 174
+
+#define TIS_TO_PATAK 175
+
+#define TIS_THO_THAN 176
+
+#define TIS_THO_NANGMONTHO 177
+
+#define TIS_THO_PHUTHAO 178
+
+#define TIS_NO_NEN 179
+
+#define TIS_DO_DEK 180
+
+#define TIS_TO_TAO 181
+
+#define TIS_THO_THUNG 182
+
+#define TIS_THO_THAHAN 183
+
+#define TIS_THO_THONG 184
+
+#define TIS_NO_NU 185
+
+#define TIS_BO_BAIMAI 186
+
+#define TIS_PO_PLA 187
+
+#define TIS_PHO_PHUNG 188
+
+#define TIS_FO_FA 189
+
+#define TIS_PHO_PHAN 190
+
+#define TIS_FO_FAN 191
+
+#define TIS_PHO_SAMPHAO 192
+
+#define TIS_MO_MA 193
+
+#define TIS_YO_YAK 194
+
+#define TIS_RO_RUA 195
+
+#define TIS_RU 196
+
+#define TIS_LO_LING 197
+
+#define TIS_LU 198
+
+#define TIS_WO_WAEN 199
+
+#define TIS_SO_SALA 200
+
+#define TIS_SO_RUSI 201
+
+#define TIS_SO_SUA 202
+
+#define TIS_HO_HIP 203
+
+#define TIS_LO_CHULA 204
+
+#define TIS_O_ANG 205
+
+#define TIS_HO_NOKHUK 206
+
+#define TIS_PAIYANNOI 207
+
+#define TIS_SARA_A 208
+
+#define TIS_MAI_HAN_AKAT 209
+
+#define TIS_SARA_AA 210
+
+#define TIS_SARA_AM 211
+
+#define TIS_SARA_I 212
+
+#define TIS_SARA_II 213
+
+#define TIS_SARA_UE 214
+
+#define TIS_SARA_UEE 215
+
+#define TIS_SARA_U 216
+
+#define TIS_SARA_UU 217
+
+#define TIS_PHINTHU 218
+
+#define TIS_SYMBOL_BAHT 223
+
+#define TIS_SARA_E 224
+
+#define TIS_SARA_AE 225
+
+#define TIS_SARA_O 226
+
+#define TIS_SARA_AI_MAIMUAN 227
+
+#define TIS_SARA_AI_MAIMALAI 228
+
+#define TIS_LAKKHANGYAO 229
+
+#define TIS_MAIYAMOK 230
+
+#define TIS_MAITAIKHU 231
+
+#define TIS_MAI_EK 232
+
+#define TIS_MAI_THO 233
+
+#define TIS_MAI_TRI 234
+
+#define TIS_MAI_CHATTAWA 235
+
+#define TIS_THANTHAKHAT 236
+
+#define TIS_NIKHAHIT 237
+
+#define TIS_YAMAKKAN 238
+
+#define TIS_FONGMAN 239
+
+#define TIS_THAI_DIGIT_ZERO 240
+
+#define TIS_THAI_DIGIT_ONE 241
+
+#define TIS_THAI_DIGIT_TWO 242
+
+#define TIS_THAI_DIGIT_THREE 243
+
+#define TIS_THAI_DIGIT_FOUR 244
+
+#define TIS_THAI_DIGIT_FIVE 245
+
+#define TIS_THAI_DIGIT_SIX 246
+
+#define TIS_THAI_DIGIT_SEVEN 247
+
+#define TIS_THAI_DIGIT_EIGHT 248
+
+#define TIS_THAI_DIGIT_NINE 249
+
+#define TIS_ANGKHANKHU 250
+
+#define TIS_KHOMUT 251
+
+#define TIS_YMBOL_BAHT 223
 
 #define TOT_LEVELS (int)4
 
 #define IGNORE (int)0
 
-#define _none (int)0
-
-#define _cntrl (int)_th_IStis
-
-#define _space (int)_th_IStis
-
-#define _edigit ((int)_th_IStis | (int)_th_ISdigit)
-
-#define _elower (int)_th_IStis
-
-#define _eupper (int)_th_IStis
-
-#define _epunct ((int)_th_IStis | (int)_th_ISpunct)
-
-#define _tdigit ((int)_th_IStis | (int)_th_ISdigit)
-
-#define _tcons ((int)_th_IStis | (int)_th_IScons)
-
-#define _tflvowel ((int)_th_IStis | (int)_th_VCflvowel)
-
-#define _tldvowel ((int)_th_IStis | (int)_th_VCldvowel)
-
-#define _tupvowel ((int)_th_IStis | (int)_th_VCupvowel)
-
-#define _tblvowel ((int)_th_IStis | (int)_th_VCblvowel)
-
-#define _ttone ((int)_th_IStis | (int)_th_IStone)
-
-#define _tdiac ((int)_th_IStis | (int)_th_ISdiac)
-
-#define _tpunct ((int)_th_IStis | (int)_th_ISpunct)
-
-#define TIS_LAKKHANGYAO (int)229
-
-#define TIS_NIKHAHIT (int)237
-
 #define TH_BLANK_BASE_GLYPH (int)221
-
-#define TIS_YO_YING (int)173
-
-#define TIS_SARA_U (int)216
 
 #define SIZE_MAX (unsigned long)18446744073709551615ull
 
@@ -101,43 +209,21 @@
 
 #define MAXLINELENGTH (int)100
 
-#define TIS_NO_NU (int)185
-
-#define TIS_SARA_I (int)212
-
-#define TIS_SARA_II (int)213
-
-#define TIS_MAI_EK (int)232
-
-#define TIS_MAI_THO (int)233
-
 #define TESTCELLS (int)10
 
 #define MAX_DATA (int)40000
 
-typedef struct BrkClass BrkClass;
+typedef struct brk_class_t brk_class_t;
 
-typedef struct BrkOp BrkOp;
+typedef struct brk_op_t brk_op_t;
 
 typedef ROTrie<Option<CTrieData>> ThTrie;
-
-typedef uint8_t thchar_t;
-
-typedef unsigned int Bool;
-
-typedef TrieState_Option_CTrieData TrieState;
-
-typedef uint32_t AlphaChar;
-
-typedef Trie_Option_CTrieData LegacyTrie;
-
-typedef int wchar_t;
-
-typedef wchar_t thwchar_t;
 
 typedef struct ThBrk {
   ThTrie dict_trie;
 } ThBrk;
+
+typedef TrieState_Option_CTrieData TrieState;
 
 typedef struct _BrkShot {
   TrieState *dict_state;
@@ -163,6 +249,18 @@ typedef struct _BrkEnv {
 } _BrkEnv;
 
 typedef struct _BrkEnv BrkEnv;
+
+typedef unsigned char thchar_t;
+
+typedef unsigned int Bool;
+
+typedef uint32_t AlphaChar;
+
+typedef Trie_Option_CTrieData LegacyTrie;
+
+typedef int wchar_t;
+
+typedef wchar_t thwchar_t;
 
 typedef struct thcell_t {
   thchar_t base;
@@ -251,13 +349,21 @@ typedef unsigned int l2_symbols;
 
 typedef unsigned int l1_symbols;
 
+#define DA_TRUE 1
+
+#define DA_FALSE 0
+
+#define _th_IScons 2
+
+#define CP 1
+
+#define _th_IStone 128
+
 #define _th_ISpunct 1024
 
 #define _th_ISdigit 512
 
 #define _th_ISdiac 256
-
-#define _th_IStone 128
 
 #define _th_VCblvowel 112
 
@@ -281,21 +387,7 @@ typedef unsigned int l1_symbols;
 
 #define _th_CClassMsk 14
 
-#define _th_IScons 2
-
 #define _th_IStis 1
-
-
-
-
-
-
-
-#define DA_TRUE 1
-
-#define DA_FALSE 0
-
-#define CP 1
 
 #define SR 5
 
@@ -659,10 +751,6 @@ typedef unsigned int l1_symbols;
 extern "C" {
 #endif // __cplusplus
 
-extern unsigned short _th_ctype_tbl[256];
-
-extern int _th_chlevel_tbl[256];
-
 extern short TACchtype_[256];
 
 extern short TACio_op_[17][17];
@@ -717,52 +805,6 @@ extern thchar_t res_level2[38];
 
 extern thchar_t res_validate[45];
 
-extern void *memset(void*, int, unsigned long);
-
-extern unsigned long strlen(const char*);
-
-ThTrie *brk_load_default_dict(void);
-
-void brk_brkpos_hints(const thchar_t *str, int len, char *hints);
-
-struct BrkClass brk_class(thchar_t c);
-
-struct BrkOp brk_op(struct BrkClass prev, struct BrkClass next);
-
-extern void *memcpy(void*, const void*, unsigned long);
-
-extern void *malloc(unsigned long);
-
-extern void *realloc(void*, unsigned long);
-
-extern void free(void*);
-
-extern Bool trie_state_is_single(const TrieState *s);
-
-extern Bool trie_state_is_walkable(const TrieState *s, AlphaChar c);
-
-extern Bool trie_state_walk(TrieState *s, AlphaChar c);
-
-extern TrieState *trie_root(const LegacyTrie *trie);
-
-extern void trie_state_copy(TrieState *dst, const TrieState *src);
-
-extern TrieState *trie_state_clone(const TrieState *s);
-
-extern void trie_state_free(TrieState *s);
-
-extern void trie_state_rewind(TrieState *s);
-
-extern int th_tis2uni_line(const thchar_t *s, thwchar_t *result, size_t n);
-
-extern void brk_brkpos_hints(const thchar_t *str, int len, char *hints);
-
-int brk_maximal_do(const thchar_t *s, int len, int *pos, size_t n, BrkEnv *env);
-
-BrkEnv *brk_env_new(struct ThBrk *brk);
-
-void brk_env_free(BrkEnv *env);
-
 extern char *strcpy(char*, const char*);
 
 extern size_t strlen(const char*);
@@ -805,6 +847,52 @@ const struct ThBrk *brk_get_shared_brk(void);
  */
 void brk_free_shared_brk(void);
 
+extern void *memset(void*, int, unsigned long);
+
+extern unsigned long strlen(const char*);
+
+ThTrie *brk_load_default_dict(void);
+
+void brk_brkpos_hints(const thchar_t *str, int32_t len, char *hints);
+
+struct brk_class_t brk_class(thchar_t c);
+
+struct brk_op_t brk_op(struct brk_class_t prev, struct brk_class_t next);
+
+extern void *memcpy(void*, const void*, unsigned long);
+
+extern void *malloc(unsigned long);
+
+extern void *realloc(void*, unsigned long);
+
+extern void free(void*);
+
+extern Bool trie_state_is_single(const TrieState *s);
+
+extern Bool trie_state_is_walkable(const TrieState *s, AlphaChar c);
+
+extern Bool trie_state_walk(TrieState *s, AlphaChar c);
+
+extern TrieState *trie_root(const LegacyTrie *trie);
+
+extern void trie_state_copy(TrieState *dst, const TrieState *src);
+
+extern TrieState *trie_state_clone(const TrieState *s);
+
+extern void trie_state_free(TrieState *s);
+
+extern void trie_state_rewind(TrieState *s);
+
+extern int th_tis2uni_line(const thchar_t *s, thwchar_t *result, size_t n);
+
+extern void brk_brkpos_hints(const thchar_t *str, int len, char *hints);
+
+int brk_maximal_do(const thchar_t *s, int len, int *pos, size_t n, BrkEnv *env);
+
+BrkEnv *brk_env_new(struct ThBrk *brk);
+
+void brk_env_free(BrkEnv *env);
+
 void th_init_cell(struct thcell_t *cell);
 
 size_t th_next_cell(const thchar_t *s, size_t len, struct thcell_t *cell, int is_decomp_am);
@@ -828,44 +916,6 @@ extern thchar_t th_char_weight_delim_(int level);
 int th_strcoll(const thchar_t *s1, const thchar_t *s2);
 
 size_t th_strxfrm(thchar_t *dest, const thchar_t *src, size_t n);
-
-int th_istis(thchar_t c);
-
-int th_isthai(thchar_t c);
-
-int th_iseng(thchar_t c);
-
-int th_isthcons(thchar_t c);
-
-int th_isthvowel(thchar_t c);
-
-int th_isthtone(thchar_t c);
-
-int th_isthdiac(thchar_t c);
-
-int th_isthdigit(thchar_t c);
-
-int th_isthpunct(thchar_t c);
-
-int th_istaillesscons(thchar_t c);
-
-int th_isovershootcons(thchar_t c);
-
-int th_isundershootcons(thchar_t c);
-
-int th_isundersplitcons(thchar_t c);
-
-int th_isldvowel(thchar_t c);
-
-int th_isflvowel(thchar_t c);
-
-int th_isupvowel(thchar_t c);
-
-int th_isblvowel(thchar_t c);
-
-int th_chlevel(thchar_t c);
-
-int th_iscombchar(thchar_t c);
 
 WTTClass TACchtype(thchar_t c);
 
