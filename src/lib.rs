@@ -1,29 +1,61 @@
-////////////////////////////////////////////////////////////////////////////////
-// Copyright (C) 2022 Manatsawin Hanmongkolchai
-//
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public
-// License as published by the Free Software Foundation; either
-// version 2.1 of the License, or (at your option) any later version.
-//
-// This library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
-////////////////////////////////////////////////////////////////////////////////
+#![allow(dead_code)]
+#![allow(mutable_transmutes)]
+#![allow(non_camel_case_types)]
+#![allow(non_snake_case)]
+#![allow(non_upper_case_globals)]
+#![allow(unused_assignments)]
+#![allow(unused_mut)]
+#![feature(extern_types)]
 
-mod cursor;
-pub mod data;
-mod thbrk;
-mod thwchar;
-mod utils;
-
-pub use thbrk::{DatrieBrk, TisBreaker};
-pub use thwchar::{
-    macthai2string, macthai2uni, str2macthai, str2tis, str2winthai, tis2string, tis2uni,
-    uni2macthai, uni2tis, uni2winthai, winthai2string, winthai2uni,
-};
+extern crate libc;
+pub mod src {
+    pub mod thbrk {
+        pub mod brk_common;
+        pub mod brk_ctype;
+        pub mod brk_maximal;
+        pub mod thbrk;
+    } // mod thbrk
+    pub mod thcell {
+        pub mod thcell;
+    } // mod thcell
+    pub mod thcoll {
+        pub mod cweight;
+        pub mod thcoll;
+    } // mod thcoll
+    pub mod thctype {
+        pub mod thctype;
+        pub mod wtt;
+    } // mod thctype
+    pub mod thinp {
+        pub mod thinp;
+    } // mod thinp
+    pub mod thrend {
+        pub mod thrend;
+    } // mod thrend
+    pub mod thstr {
+        pub mod thstr;
+    } // mod thstr
+    pub mod thwbrk {
+        pub mod thwbrk;
+    } // mod thwbrk
+    pub mod thwchar {
+        pub mod thwchar;
+    } // mod thwchar
+    pub mod thwctype {
+        pub mod thwctype;
+    } // mod thwctype
+    pub mod thwstr {
+        pub mod thwstr;
+    } // mod thwstr
+} // mod src
+pub mod tests {
+    pub mod test_thbrk;
+    pub mod test_thcell;
+    pub mod test_thctype;
+    pub mod test_thinp;
+    pub mod test_thrend;
+    pub mod test_thstr;
+    pub mod test_thwbrk;
+    pub mod test_thwchar;
+    pub mod thsort;
+} // mod tests
