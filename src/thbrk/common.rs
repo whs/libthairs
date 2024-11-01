@@ -4,7 +4,7 @@ use crate::tis::{
     TIS_SARA_AA, TIS_SARA_AE, TIS_SARA_E, TIS_SARA_UEE, TIS_THANTHAKHAT, TIS_WO_WAEN,
 };
 use ::libc;
-use datrie::{CTrieData, ROTrie};
+use datrie::{CTrieData, ROTrie, TrieState};
 use std::ffi::CStr;
 use std::path::Path;
 use std::ptr::NonNull;
@@ -14,12 +14,7 @@ const DICT_DIR: &'static str = "share/libthai";
 const DICT_NAME: &'static str = "thbrk";
 
 pub type ThTrie = ROTrie<Option<CTrieData>>;
-
-extern "C" {
-    fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
-    fn strlen(_: *const libc::c_char) -> libc::c_ulong;
-    static _th_ctype_tbl: [libc::c_ushort; 0];
-}
+pub type ThTrieState<'a> = TrieState<'a, Option<CTrieData>>;
 
 pub fn brk_load_default_dict_rs() -> io::Result<ThTrie> {
     let env = env::var("LIBTHAI_DICTDIR");
@@ -40,7 +35,7 @@ pub(crate) extern "C" fn brk_load_default_dict() -> *mut ThTrie {
     }
 }
 
-pub fn brk_brkpos_hints_rs(str: &[u8]) -> Vec<bool> {
+pub fn brk_brkpos_hints_rs(str: &[thchar_t]) -> Vec<bool> {
     let mut hints = vec![false; str.len()];
 
     let mut i = 0;

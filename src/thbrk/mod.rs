@@ -328,7 +328,7 @@ pub unsafe extern "C" fn th_brk(
 /// The Rust version of this is thread safe
 #[no_mangle]
 #[deprecated(note = "Use SHARED")]
-pub extern "C" fn brk_get_shared_brk() -> *const ThBrk {
+pub(crate) extern "C" fn brk_get_shared_brk() -> *const ThBrk {
     match &*SHARED {
         Some(brk) => brk,
         None => ptr::null(),
@@ -338,4 +338,4 @@ pub extern "C" fn brk_get_shared_brk() -> *const ThBrk {
 /// Does nothing in the Rust version
 #[no_mangle]
 #[deprecated(note = "Use SHARED")]
-pub unsafe extern "C" fn brk_free_shared_brk() {}
+pub(crate) unsafe extern "C" fn brk_free_shared_brk() {}

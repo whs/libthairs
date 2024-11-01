@@ -1,4 +1,7 @@
 use ::libc;
+use std::ffi::CStr;
+use std::ptr::NonNull;
+use std::slice;
 pub type size_t = libc::c_ulong;
 pub type wchar_t = libc::c_int;
 pub type thchar_t = libc::c_uchar;
@@ -503,25 +506,27 @@ pub unsafe extern "C" fn th_tis2uni(mut c: thchar_t) -> thwchar_t {
         tis620_0_uni_map_[(c as libc::c_int - 0x80 as libc::c_int) as usize]
     };
 }
+
+/// Convert string from TIS-620 to Unicode
 #[no_mangle]
-pub unsafe extern "C" fn th_tis2uni_line(
-    mut s: *const thchar_t,
-    mut result: *mut thwchar_t,
-    mut n: size_t,
-) -> libc::c_int {
-    let mut left: libc::c_int = n as libc::c_int;
-    while *s as libc::c_int != 0 && left > 1 as libc::c_int {
-        let fresh0 = s;
-        s = s.offset(1);
-        let fresh1 = result;
-        result = result.offset(1);
-        *fresh1 = th_tis2uni(*fresh0);
-        left -= 1;
-        left;
+pub extern "C" fn th_tis2uni_line(
+    s: *const thchar_t,
+    mut result: NonNull<thwchar_t>,
+    n: usize,
+) -> i32 {
+    let s = unsafe { CStr::from_ptr(s as *const libc::c_char) };
+    let mut result = unsafe { slice::from_raw_parts_mut(result.as_ptr(), n) };
+
+    let mut out_len = 0;
+    for (i, (src, dst)) in s.to_bytes().iter().zip(result[..n-1].iter_mut()).enumerate() {
+        *dst = unsafe { th_tis2uni(*src) };
+        out_len = i;
     }
-    *result = 0 as libc::c_int;
-    return n.wrapping_sub(left as size_t) as libc::c_int;
+    result[out_len + 1] = 0;
+
+    out_len as i32
 }
+
 #[no_mangle]
 pub unsafe extern "C" fn th_winthai2uni(mut c: thchar_t) -> thwchar_t {
     return if (c as libc::c_int) < 0x80 as libc::c_int {

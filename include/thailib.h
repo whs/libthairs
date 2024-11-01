@@ -223,44 +223,30 @@ typedef struct ThBrk {
   ThTrie dict_trie;
 } ThBrk;
 
-typedef TrieState_Option_CTrieData TrieState;
+typedef TrieState_Option_CTrieData LegacyTrieState;
 
-typedef struct _BrkShot {
-  TrieState *dict_state;
+typedef struct BrkShot {
+  LegacyTrieState *dict_state;
   int str_pos;
   int *brk_pos;
   int n_brk_pos;
   int cur_brk_pos;
   int penalty;
-} _BrkShot;
+} BrkShot;
 
-typedef struct _BrkShot BrkShot;
+typedef struct BrkPool {
+  struct BrkPool *next;
+  struct BrkShot shot;
+} BrkPool;
 
-typedef struct _BrkPool {
-  BrkPool *next;
-  BrkShot shot;
-} _BrkPool;
-
-typedef struct _BrkPool BrkPool;
-
-typedef struct _BrkEnv {
+typedef struct BrkEnv {
   struct ThBrk *env_brk;
-  BrkPool *free_list;
-} _BrkEnv;
-
-typedef struct _BrkEnv BrkEnv;
+  struct BrkPool *free_list;
+} BrkEnv;
 
 typedef unsigned char thchar_t;
 
-typedef unsigned int Bool;
-
-typedef uint32_t AlphaChar;
-
 typedef Trie_Option_CTrieData LegacyTrie;
-
-typedef int wchar_t;
-
-typedef wchar_t thwchar_t;
 
 typedef struct thcell_t {
   thchar_t base;
@@ -280,6 +266,10 @@ typedef struct thinpconv_t {
 } thinpconv_t;
 
 typedef unsigned char thglyph_t;
+
+typedef int wchar_t;
+
+typedef wchar_t thwchar_t;
 
 typedef void *iconv_t;
 
@@ -348,10 +338,6 @@ typedef unsigned int l4_symbols;
 typedef unsigned int l2_symbols;
 
 typedef unsigned int l1_symbols;
-
-#define DA_TRUE 1
-
-#define DA_FALSE 0
 
 #define _th_IScons 2
 
@@ -813,11 +799,11 @@ extern void *malloc(size_t);
 
 extern void free(void*);
 
-extern BrkEnv *brk_env_new(struct ThBrk *brk);
+extern struct BrkEnv *brk_env_new(struct ThBrk *brk);
 
-extern void brk_env_free(BrkEnv *env);
+extern void brk_env_free(struct BrkEnv *env);
 
-extern int brk_maximal_do(const thchar_t *s, int len, int *pos, size_t n, BrkEnv *env);
+extern int brk_maximal_do(const thchar_t *s, int len, int *pos, size_t n, struct BrkEnv *env);
 
 struct ThBrk *th_brk_new(const char *dictpath);
 
@@ -847,10 +833,6 @@ const struct ThBrk *brk_get_shared_brk(void);
  */
 void brk_free_shared_brk(void);
 
-extern void *memset(void*, int, unsigned long);
-
-extern unsigned long strlen(const char*);
-
 ThTrie *brk_load_default_dict(void);
 
 void brk_brkpos_hints(const thchar_t *str, int32_t len, char *hints);
@@ -867,31 +849,29 @@ extern void *realloc(void*, unsigned long);
 
 extern void free(void*);
 
-extern Bool trie_state_is_single(const TrieState *s);
+extern bool trie_state_is_single(const LegacyTrieState *s);
 
-extern Bool trie_state_is_walkable(const TrieState *s, AlphaChar c);
+extern bool trie_state_is_walkable(const LegacyTrieState *s, AlphaChar c);
 
-extern Bool trie_state_walk(TrieState *s, AlphaChar c);
+extern bool trie_state_walk(LegacyTrieState *s, AlphaChar c);
 
-extern TrieState *trie_root(const LegacyTrie *trie);
+extern LegacyTrieState *trie_root(const LegacyTrie *trie);
 
-extern void trie_state_copy(TrieState *dst, const TrieState *src);
+extern void trie_state_copy(LegacyTrieState *dst, const LegacyTrieState *src);
 
-extern TrieState *trie_state_clone(const TrieState *s);
+extern LegacyTrieState *trie_state_clone(const LegacyTrieState *s);
 
-extern void trie_state_free(TrieState *s);
+extern void trie_state_free(LegacyTrieState *s);
 
-extern void trie_state_rewind(TrieState *s);
-
-extern int th_tis2uni_line(const thchar_t *s, thwchar_t *result, size_t n);
+extern void trie_state_rewind(LegacyTrieState *s);
 
 extern void brk_brkpos_hints(const thchar_t *str, int len, char *hints);
 
-int brk_maximal_do(const thchar_t *s, int len, int *pos, size_t n, BrkEnv *env);
+int brk_maximal_do(const thchar_t *s, int len, int *pos, uintptr_t n, struct BrkEnv *env);
 
-BrkEnv *brk_env_new(struct ThBrk *brk);
+struct BrkEnv *brk_env_new(struct ThBrk *brk);
 
-void brk_env_free(BrkEnv *env);
+void brk_env_free(struct BrkEnv *env);
 
 void th_init_cell(struct thcell_t *cell);
 
@@ -976,7 +956,10 @@ int th_wbrk_line(const thwchar_t *in_0, thwchar_t *out, size_t out_sz, const thw
 
 thwchar_t th_tis2uni(thchar_t c);
 
-int th_tis2uni_line(const thchar_t *s, thwchar_t *result, size_t n);
+/**
+ * Convert string from TIS-620 to Unicode
+ */
+int32_t th_tis2uni_line(const thchar_t *s, thwchar_t *result, uintptr_t n);
 
 thwchar_t th_winthai2uni(thchar_t c);
 

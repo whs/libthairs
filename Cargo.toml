@@ -15,6 +15,7 @@ crate-type = ["cdylib", "lib"]
 [dependencies]
 libc = { version = "0.2", optional = true }
 null-terminated = { version = "0.3.17", optional = true }
+encoding_rs = "0.8.35"
 
 [dependencies.datrie]
 path = "../libdatrie-rs"
