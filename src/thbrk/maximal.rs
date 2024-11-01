@@ -12,9 +12,9 @@ extern "C" {
     fn malloc(_: libc::c_ulong) -> *mut libc::c_void;
     fn realloc(_: *mut libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
     fn free(_: *mut libc::c_void);
-    fn trie_state_is_single(s: *const LegacyTrieState) -> bool;
-    fn trie_state_is_walkable(s: *const LegacyTrieState, c: AlphaChar) -> bool;
-    fn trie_state_walk(s: *mut LegacyTrieState, c: AlphaChar) -> bool;
+    fn trie_state_is_single(s: *const LegacyTrieState) -> Bool;
+    fn trie_state_is_walkable(s: *const LegacyTrieState, c: AlphaChar) -> Bool;
+    fn trie_state_walk(s: *mut LegacyTrieState, c: AlphaChar) -> Bool;
     fn trie_root(trie: *const LegacyTrie) -> *mut LegacyTrieState;
     fn trie_state_copy(dst: *mut LegacyTrieState, src: *const LegacyTrieState);
     fn trie_state_clone(s: *const LegacyTrieState) -> *mut LegacyTrieState;
@@ -24,6 +24,13 @@ extern "C" {
 }
 pub type LegacyTrie = Trie_Option_CTrieData;
 pub type LegacyTrieState = TrieState_Option_CTrieData;
+
+#[derive(Eq, PartialEq, Copy, Clone)]
+#[repr(transparent)]
+struct Bool(u32);
+
+const DA_TRUE: Bool = Bool(1);
+const DA_FALSE: Bool = Bool(0);
 
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -132,7 +139,7 @@ unsafe extern "C" fn brk_maximal_do_impl(
         }
         let mut shot: *mut BrkShot = &mut (*node).shot;
         let mut is_keep_node: libc::c_int = 0;
-        let mut is_terminal: libc::c_int = 0;
+        let mut is_terminal = false;
         let mut is_recovered: libc::c_int = 0;
         let mut str_pos: libc::c_int = 0;
         is_keep_node = 1 as libc::c_int;
@@ -141,11 +148,11 @@ unsafe extern "C" fn brk_maximal_do_impl(
         loop {
             let fresh0 = str_pos;
             str_pos = str_pos + 1;
-            if trie_state_walk((*shot).dict_state, *ws.offset(fresh0 as isize) as AlphaChar) as u64
-                == 0
+            if trie_state_walk((*shot).dict_state, *ws.offset(fresh0 as isize) as AlphaChar)
+                == DA_FALSE
             {
                 let mut recovered: libc::c_int = 0;
-                is_terminal = 0 as libc::c_int;
+                is_terminal = false;
                 recovered = brk_recover(
                     ws,
                     len,
@@ -178,9 +185,9 @@ unsafe extern "C" fn brk_maximal_do_impl(
             } else {
                 is_terminal =
                     trie_state_is_walkable((*shot).dict_state, 0 as libc::c_int as AlphaChar)
-                        as libc::c_int;
+                        == DA_TRUE;
                 if str_pos >= len {
-                    if is_terminal == 0 {
+                    if !is_terminal {
                         (*shot).penalty += len;
                         if (*shot).cur_brk_pos > 0 as libc::c_int {
                             (*shot).penalty -= *((*shot).brk_pos)
@@ -192,18 +199,17 @@ unsafe extern "C" fn brk_maximal_do_impl(
                         is_keep_node = 0 as libc::c_int;
                     }
                     break;
-                } else if is_terminal != 0
-                    && *brkpos_hints.offset(str_pos as isize) as libc::c_int != 0
+                } else if is_terminal && *brkpos_hints.offset(str_pos as isize) as libc::c_int != 0
                 {
                     break;
                 }
             }
         }
         (*shot).str_pos = str_pos;
-        if is_keep_node != 0 && (is_terminal != 0 || is_recovered != 0) {
+        if is_keep_node != 0 && (is_terminal || is_recovered != 0) {
             if (*shot).str_pos < len
-                && is_terminal != 0
-                && trie_state_is_single((*shot).dict_state) as u64 == 0
+                && is_terminal
+                && trie_state_is_single((*shot).dict_state) == DA_FALSE
             {
                 let mut new_node: *mut BrkPool = brk_pool_node_new(shot, env);
                 if !new_node.is_null() {
@@ -277,28 +283,27 @@ unsafe extern "C" fn brk_recover_try(
         }
         let mut shot: *mut BrkShot = &mut (*node).shot;
         let mut is_keep_node: libc::c_int = 0;
-        let mut is_terminal: libc::c_int = 0;
+        let mut is_terminal = false;
         is_keep_node = 1 as libc::c_int;
         loop {
             loop {
                 let fresh4 = (*shot).str_pos;
                 (*shot).str_pos = (*shot).str_pos + 1;
                 if trie_state_walk((*shot).dict_state, *ws.offset(fresh4 as isize) as AlphaChar)
-                    as u64
-                    == 0
+                    == DA_FALSE
                 {
                     is_keep_node = 0 as libc::c_int;
                     break;
                 } else {
                     is_terminal =
                         trie_state_is_walkable((*shot).dict_state, 0 as libc::c_int as AlphaChar)
-                            as libc::c_int;
+                            == DA_TRUE;
                     if (*shot).str_pos >= len {
-                        if is_terminal == 0 {
+                        if !is_terminal {
                             is_keep_node = 0 as libc::c_int;
                         }
                         break;
-                    } else if is_terminal != 0
+                    } else if is_terminal
                         && *brkpos_hints.offset((*shot).str_pos as isize) as libc::c_int != 0
                     {
                         break;
@@ -309,7 +314,7 @@ unsafe extern "C" fn brk_recover_try(
                 pool = brk_pool_delete_node(pool, node, env);
                 break;
             } else {
-                if (*shot).str_pos < len && trie_state_is_single((*shot).dict_state) as u64 == 0 {
+                if (*shot).str_pos < len && trie_state_is_single((*shot).dict_state) == DA_FALSE {
                     let mut new_node: *mut BrkPool = brk_pool_node_new(shot, env);
                     if !new_node.is_null() {
                         node = new_node;

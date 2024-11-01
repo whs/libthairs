@@ -1,7 +1,7 @@
 use ::libc;
 use std::ffi::CStr;
 use std::ptr::NonNull;
-use std::slice;
+use std::{mem, slice};
 pub type size_t = libc::c_ulong;
 pub type wchar_t = libc::c_int;
 pub type thchar_t = libc::c_uchar;
@@ -518,7 +518,12 @@ pub extern "C" fn th_tis2uni_line(
     let mut result = unsafe { slice::from_raw_parts_mut(result.as_ptr(), n) };
 
     let mut out_len = 0;
-    for (i, (src, dst)) in s.to_bytes().iter().zip(result[..n-1].iter_mut()).enumerate() {
+    for (i, (src, dst)) in s
+        .to_bytes()
+        .iter()
+        .zip(result[..n - 1].iter_mut())
+        .enumerate()
+    {
         *dst = unsafe { th_tis2uni(*src) };
         out_len = i;
     }

@@ -13,7 +13,7 @@ use std::sync::LazyLock;
 use std::{io, ptr};
 
 extern "C" {
-    pub type _BrkEnv;
+    pub type BrkEnv;
     fn strcpy(_: *mut libc::c_char, _: *const libc::c_char) -> *mut libc::c_char;
     fn strlen(_: *const libc::c_char) -> libc::size_t;
     fn malloc(_: libc::size_t) -> *mut libc::c_void;
@@ -31,15 +31,17 @@ extern "C" {
 
 #[repr(C)]
 pub struct ThBrk {
-    dict_trie: ThTrie,
+    // TODO: Remove Box when the Rust port is complete
+    dict_trie: Box<ThTrie>,
 }
 
-pub type BrkEnv = _BrkEnv;
 pub const MAX_ACRONYM_FRAG_LEN: libc::c_int = 3 as libc::c_int;
 
 impl ThBrk {
     pub fn new(dict: ThTrie) -> Self {
-        ThBrk { dict_trie: dict }
+        ThBrk {
+            dict_trie: Box::new(dict),
+        }
     }
 
     pub fn new_default() -> io::Result<ThBrk> {

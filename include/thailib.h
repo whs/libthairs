@@ -220,7 +220,7 @@ typedef struct brk_op_t brk_op_t;
 typedef ROTrie<Option<CTrieData>> ThTrie;
 
 typedef struct ThBrk {
-  ThTrie dict_trie;
+  ThTrie *dict_trie;
 } ThBrk;
 
 typedef TrieState_Option_CTrieData LegacyTrieState;
@@ -245,6 +245,8 @@ typedef struct BrkEnv {
 } BrkEnv;
 
 typedef unsigned char thchar_t;
+
+typedef uint32_t Bool;
 
 typedef Trie_Option_CTrieData LegacyTrie;
 
@@ -849,11 +851,11 @@ extern void *realloc(void*, unsigned long);
 
 extern void free(void*);
 
-extern bool trie_state_is_single(const LegacyTrieState *s);
+extern Bool trie_state_is_single(const LegacyTrieState *s);
 
-extern bool trie_state_is_walkable(const LegacyTrieState *s, AlphaChar c);
+extern Bool trie_state_is_walkable(const LegacyTrieState *s, AlphaChar c);
 
-extern bool trie_state_walk(LegacyTrieState *s, AlphaChar c);
+extern Bool trie_state_walk(LegacyTrieState *s, AlphaChar c);
 
 extern LegacyTrieState *trie_root(const LegacyTrie *trie);
 
