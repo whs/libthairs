@@ -29,19 +29,15 @@ extern "C" {
     ) -> libc::c_int;
 }
 
-#[repr(C)]
 pub struct ThBrk {
-    // TODO: Remove Box when the Rust port is complete
-    dict_trie: Box<ThTrie>,
+    dict_trie: ThTrie,
 }
 
 pub const MAX_ACRONYM_FRAG_LEN: libc::c_int = 3 as libc::c_int;
 
 impl ThBrk {
     pub fn new(dict: ThTrie) -> Self {
-        ThBrk {
-            dict_trie: Box::new(dict),
-        }
+        ThBrk { dict_trie: dict }
     }
 
     pub fn new_default() -> io::Result<ThBrk> {

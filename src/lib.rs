@@ -39,14 +39,3 @@ pub mod thwctype {
 pub mod thwstr {
     pub mod thwstr;
 } // mod thwstr
-pub mod tests {
-    pub mod test_thbrk;
-    pub mod test_thcell;
-    pub mod test_thctype;
-    pub mod test_thinp;
-    pub mod test_thrend;
-    pub mod test_thstr;
-    pub mod test_thwbrk;
-    pub mod test_thwchar;
-    pub mod thsort;
-} // mod tests

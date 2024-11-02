@@ -203,27 +203,17 @@
 
 #define TH_ERR ~(int)0
 
-#define MAXLINELENGTH (int)100
-
-#define TESTCELLS (int)10
-
-#define MAX_DATA (int)40000
-
 typedef struct brk_class_t brk_class_t;
+
+typedef struct BrkEnv BrkEnv;
 
 typedef struct brk_op_t brk_op_t;
 
-typedef ROTrie<Option<CTrieData>> ThTrie;
-
-typedef struct ThBrk {
-  ThTrie *dict_trie;
-} ThBrk;
-
-typedef struct BrkEnv {
-  struct ThBrk *env_brk;
-} BrkEnv;
+typedef struct ThBrk ThBrk;
 
 typedef unsigned char thchar_t;
+
+typedef ROTrie<Option<CTrieData>> ThTrie;
 
 typedef uint32_t Bool;
 
@@ -251,62 +241,6 @@ typedef unsigned char thglyph_t;
 typedef int wchar_t;
 
 typedef wchar_t thwchar_t;
-
-typedef void *iconv_t;
-
-typedef struct _Sample {
-  const char *str_0;
-  int n_brk;
-  int brk_pos[100];
-  const char *ins_str;
-} _Sample;
-
-typedef struct _Sample Sample;
-
-typedef long __off_t;
-
-typedef long __off64_t;
-
-typedef struct _IO_FILE {
-  int _flags;
-  char *_IO_read_ptr;
-  char *_IO_read_end;
-  char *_IO_read_base;
-  char *_IO_write_base;
-  char *_IO_write_ptr;
-  char *_IO_write_end;
-  char *_IO_buf_base;
-  char *_IO_buf_end;
-  char *_IO_save_base;
-  char *_IO_backup_base;
-  char *_IO_save_end;
-  _IO_marker *_markers;
-  struct _IO_FILE *_chain;
-  int _fileno;
-  int _flags2;
-  __off_t _old_offset;
-  unsigned short _cur_column;
-  signed char _vtable_offset;
-  char _shortbuf[1];
-  void *_lock;
-  __off64_t _offset;
-  _IO_codecvt *_codecvt;
-  _IO_wide_data *_wide_data;
-  struct _IO_FILE *_freeres_list;
-  void *_freeres_buf;
-  struct _IO_FILE **_prevchain;
-  int _mode;
-  char _unused2[20];
-} _IO_FILE;
-
-typedef struct _IO_FILE FILE;
-
-typedef struct char_range {
-  thchar_t begin;
-  thchar_t end;
-} char_range;
-
-typedef int (*__compar_fn_t)(const void*, const void*);
 
 typedef unsigned int C2RustUnnamed;
 
@@ -722,56 +656,6 @@ extern short TACchtype_[256];
 
 extern short TACio_op_[17][17];
 
-extern Sample TestSamples[12];
-
-extern iconv_t utf8_to_tis_iconv;
-
-extern iconv_t tis_to_utf8_iconv;
-
-extern struct char_range tis_ranges[4];
-
-extern struct char_range thai_ranges[3];
-
-extern struct char_range eng_ranges[2];
-
-extern struct char_range thcons_ranges[4];
-
-extern struct char_range tlcons_ranges[9];
-
-extern struct char_range oscons_ranges[5];
-
-extern struct char_range uscons_ranges[2];
-
-extern struct char_range spcons_ranges[3];
-
-extern struct char_range thvowel_ranges[5];
-
-extern struct char_range ldvowel_ranges[2];
-
-extern struct char_range flvowel_ranges[6];
-
-extern struct char_range upvowel_ranges[3];
-
-extern struct char_range blvowel_ranges[2];
-
-extern struct char_range thtone_ranges[2];
-
-extern struct char_range thdiac_ranges[4];
-
-extern struct char_range thdigit_ranges[3];
-
-extern struct char_range thpunct_ranges[10];
-
-extern thchar_t test_keys[55];
-
-extern thchar_t res_level0[55];
-
-extern thchar_t res_level1[44];
-
-extern thchar_t res_level2[38];
-
-extern thchar_t res_validate[45];
-
 extern char *strcpy(char*, const char*);
 
 extern size_t strlen(const char*);
@@ -780,23 +664,23 @@ extern void *malloc(size_t);
 
 extern void free(void*);
 
-extern struct BrkEnv *brk_env_new(struct ThBrk *brk);
+extern struct BrkEnv *brk_env_new(ThBrk *brk);
 
 extern void brk_env_free(struct BrkEnv *env);
 
 extern int brk_maximal_do(const thchar_t *s, int len, int *pos, size_t n, struct BrkEnv *env);
 
-struct ThBrk *th_brk_new(const char *dictpath);
+ThBrk *th_brk_new(const char *dictpath);
 
-void th_brk_delete(struct ThBrk *brk);
+void th_brk_delete(ThBrk *brk);
 
-int th_brk_insert_breaks(struct ThBrk *brk,
+int th_brk_insert_breaks(ThBrk *brk,
                          const thchar_t *in_0,
                          thchar_t *out,
                          size_t out_sz,
                          const char *delim);
 
-int th_brk_find_breaks(struct ThBrk *brk, const thchar_t *s, int *pos, size_t pos_sz);
+int th_brk_find_breaks(ThBrk *brk, const thchar_t *s, int *pos, size_t pos_sz);
 
 int th_brk_line(const thchar_t *in_0, thchar_t *out, size_t out_sz, const char *delim);
 
@@ -807,7 +691,7 @@ int th_brk(const thchar_t *s, int *pos, size_t pos_sz);
  *
  * The Rust version of this is thread safe
  */
-const struct ThBrk *brk_get_shared_brk(void);
+const ThBrk *brk_get_shared_brk(void);
 
 /**
  * Does nothing in the Rust version
@@ -846,7 +730,7 @@ extern void trie_state_rewind(LegacyTrieState *s);
 
 int brk_maximal_do(const thchar_t *s, int len, int *pos, uintptr_t n, struct BrkEnv *env);
 
-struct BrkEnv *brk_env_new(struct ThBrk *brk);
+struct BrkEnv *brk_env_new(const ThBrk *brk);
 
 void brk_env_free(struct BrkEnv *env);
 
@@ -917,11 +801,11 @@ extern unsigned long wcslen(const int*);
 
 extern int th_uni2tis_line(const thwchar_t *s, thchar_t *result, size_t n);
 
-extern int th_brk_find_breaks(struct ThBrk *brk, const thchar_t *s, int *pos, size_t pos_sz);
+extern int th_brk_find_breaks(ThBrk *brk, const thchar_t *s, int *pos, size_t pos_sz);
 
-int th_brk_wc_find_breaks(struct ThBrk *brk, const thwchar_t *s, int *pos, size_t pos_sz);
+int th_brk_wc_find_breaks(ThBrk *brk, const thwchar_t *s, int *pos, size_t pos_sz);
 
-int th_brk_wc_insert_breaks(struct ThBrk *brk,
+int th_brk_wc_insert_breaks(ThBrk *brk,
                             const thwchar_t *in_0,
                             thwchar_t *out,
                             size_t out_sz,
@@ -999,226 +883,6 @@ extern void free(void*);
 extern void *malloc(unsigned long);
 
 size_t th_wnormalize(thwchar_t *wdest, const thwchar_t *wsrc, size_t n);
-
-extern int printf(const char*, ...);
-
-extern void exit(int);
-
-extern int strcmp(const char*, const char*);
-
-extern unsigned long strlen(const char*);
-
-extern struct ThBrk *th_brk_new(const char *dictpath);
-
-extern void th_brk_delete(struct ThBrk *brk);
-
-extern int th_brk_find_breaks(struct ThBrk *brk, const thchar_t *s, int *pos, size_t pos_sz);
-
-extern int th_brk_insert_breaks(struct ThBrk *brk,
-                                const thchar_t *in_0,
-                                thchar_t *out,
-                                size_t out_sz,
-                                const char *delim);
-
-extern int iconv_close(iconv_t __cd);
-
-extern iconv_t iconv_open(const char *__tocode, const char *__fromcode);
-
-extern size_t iconv(iconv_t __cd,
-                    char **__inbuf,
-                    size_t *__inbytesleft,
-                    char **__outbuf,
-                    size_t *__outbytesleft);
-
-void init_iconv(void);
-
-void close_iconv(void);
-
-size_t utf8_to_tis(const char *utf8_str, thchar_t *tis, size_t tis_sz);
-
-size_t tis_to_utf8(const thchar_t *tis_str, char *utf8, size_t utf8_sz);
-
-void show_breaks(int *brk_pos, int n_brk);
-
-int test_samples(struct ThBrk *brk, const Sample *samples);
-
-extern size_t th_next_cell(const thchar_t *s, size_t len, struct thcell_t *cell, int is_decomp_am);
-
-extern size_t th_prev_cell(const thchar_t *s, size_t pos, struct thcell_t *cell, int is_decomp_am);
-
-extern size_t th_make_cells(const thchar_t *s,
-                            size_t len,
-                            struct thcell_t *cells,
-                            size_t *ncells,
-                            int is_decomp_am);
-
-extern unsigned long strlen(const char*);
-
-extern int fprintf(FILE*, const char*, ...);
-
-extern void *malloc(unsigned long);
-
-extern void free(void*);
-
-int test_th_next_cell(void);
-
-int test_th_prev_cell(void);
-
-int test_th_make_cells(void);
-
-extern int th_isblvowel(thchar_t c);
-
-extern int th_isupvowel(thchar_t c);
-
-extern int th_isflvowel(thchar_t c);
-
-extern int th_isldvowel(thchar_t c);
-
-extern int th_isundersplitcons(thchar_t c);
-
-extern int th_isundershootcons(thchar_t c);
-
-extern int th_isovershootcons(thchar_t c);
-
-extern int th_istaillesscons(thchar_t c);
-
-extern int th_isthpunct(thchar_t c);
-
-extern int th_isthdigit(thchar_t c);
-
-extern int th_isthdiac(thchar_t c);
-
-extern int th_isthtone(thchar_t c);
-
-extern int th_isthvowel(thchar_t c);
-
-extern int th_isthcons(thchar_t c);
-
-extern int th_iseng(thchar_t c);
-
-extern int th_isthai(thchar_t c);
-
-extern int th_istis(thchar_t c);
-
-extern int fprintf(FILE*, const char*, ...);
-
-int test_bool_funcs(const struct char_range *ranges, int (*fn_0)(thchar_t));
-
-extern int th_isaccept(thchar_t c1, thchar_t c2, thstrict_t s);
-
-extern size_t th_prev_cell(const thchar_t *s, size_t pos, struct thcell_t *cell, int is_decomp_am);
-
-extern int th_validate(struct thcell_t context, thchar_t c, struct thinpconv_t *conv);
-
-extern char *strcpy(char*, const char*);
-
-extern int strcmp(const char*, const char*);
-
-extern unsigned long strlen(const char*);
-
-extern int fprintf(FILE*, const char*, ...);
-
-extern int th_render_text_tis(const thchar_t *s, thglyph_t *res, size_t res_sz, int is_decomp_am);
-
-extern int th_render_text_win(const thchar_t *s, thglyph_t *res, size_t res_sz, int is_decomp_am);
-
-extern int th_render_text_mac(const thchar_t *s, thglyph_t *res, size_t res_sz, int is_decomp_am);
-
-extern int strcmp(const char*, const char*);
-
-extern int fprintf(FILE*, const char*, ...);
-
-int test_th_render_tis(void);
-
-int test_th_render_win(void);
-
-int test_th_render_mac(void);
-
-extern size_t th_normalize(thchar_t *dest, const thchar_t *src, size_t n);
-
-extern int strcmp(const char*, const char*);
-
-int test_th_normalize(void);
-
-extern int printf(const char*, ...);
-
-extern void exit(int);
-
-extern char *strcpy(char*, const char*);
-
-extern int strcmp(const char*, const char*);
-
-extern unsigned long strlen(const char*);
-
-extern struct ThBrk *th_brk_new(const char *dictpath);
-
-extern void th_brk_delete(struct ThBrk *brk);
-
-extern int th_brk_insert_breaks(struct ThBrk *brk,
-                                const thchar_t *in_0,
-                                thchar_t *out,
-                                size_t out_sz,
-                                const char *delim);
-
-extern unsigned long wcslen(const int*);
-
-extern int th_uni2tis_line(const thwchar_t *s, thchar_t *result, size_t n);
-
-extern int th_tis2uni_line(const thchar_t *s, thwchar_t *result, size_t n);
-
-extern int th_brk_wc_find_breaks(struct ThBrk *brk, const thwchar_t *s, int *pos, size_t pos_sz);
-
-extern int th_brk_wc_insert_breaks(struct ThBrk *brk,
-                                   const thwchar_t *in_0,
-                                   thwchar_t *out,
-                                   size_t out_sz,
-                                   const thwchar_t *delim);
-
-extern int fprintf(FILE*, const char*, ...);
-
-extern char *strcpy(char*, const char*);
-
-extern int strcmp(const char*, const char*);
-
-extern unsigned long strlen(const char*);
-
-extern unsigned long wcslen(const int*);
-
-extern thchar_t th_uni2macthai(thwchar_t wc);
-
-extern thchar_t th_uni2winthai(thwchar_t wc);
-
-extern int th_uni2tis_line(const thwchar_t *s, thchar_t *result, size_t n);
-
-extern thwchar_t th_macthai2uni(thchar_t c);
-
-extern thwchar_t th_winthai2uni(thchar_t c);
-
-extern int th_tis2uni_line(const thchar_t *s, thwchar_t *result, size_t n);
-
-extern int th_strcoll(const thchar_t *s1, const thchar_t *s2);
-
-extern int fclose(FILE *__stream);
-
-extern FILE *fopen(const char*, const char*);
-
-extern int fprintf(FILE*, const char*, ...);
-
-extern int printf(const char*, ...);
-
-extern char *fgets(char *__s, int __n, FILE *__stream);
-
-extern void perror(const char *__s);
-
-extern char *strcpy(char*, const char*);
-
-extern unsigned long strlen(const char*);
-
-extern void *malloc(unsigned long);
-
-extern void free(void*);
-
-extern void qsort(void *__base, size_t __nmemb, size_t __size, __compar_fn_t __compar);
 
 #ifdef __cplusplus
 }  // extern "C"

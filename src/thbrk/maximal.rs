@@ -31,15 +31,14 @@ struct Bool(u32);
 const DA_TRUE: Bool = Bool(1);
 const DA_FALSE: Bool = Bool(0);
 
-#[derive(Clone)]
-#[repr(C)]
-struct BrkEnv {
-    env_brk: *mut ThBrk,
+#[derive(Default)]
+struct BrkEnv<'brk> {
+    brk: Option<&'brk ThBrk>,
 }
 
-impl BrkEnv {
-    fn new(brk: *mut ThBrk) -> Self {
-        Self { env_brk: brk }
+impl<'brk> BrkEnv<'brk> {
+    fn new(brk: &'brk ThBrk) -> Self {
+        Self { brk: Some(brk) }
     }
 }
 
@@ -407,7 +406,6 @@ unsafe extern "C" fn brk_root_pool(
     mut pos_size: libc::c_int,
     mut env: *mut BrkEnv,
 ) -> *mut BrkPool {
-    let mut brk: *mut ThBrk = 0 as *mut ThBrk;
     let mut pool: *mut BrkPool = 0 as *mut BrkPool;
     let mut node: *mut BrkPool = 0 as *mut BrkPool;
     let mut root_shot: BrkShot = BrkShot {
@@ -419,12 +417,12 @@ unsafe extern "C" fn brk_root_pool(
         penalty: 0,
     };
     pool = NULL as *mut BrkPool;
-    brk = (*env).env_brk;
-    if brk.is_null() {
-        return NULL as *mut BrkPool;
-    }
+    let brk = match (*env).brk {
+        Some(v) => v,
+        None => return ptr::null_mut(),
+    };
     root_shot.dict_state =
-        Box::into_raw(Box::new((*brk).dict_trie.root())) as *mut TrieState_Option_CTrieData;
+        Box::into_raw(Box::new(brk.dict_trie.root())) as *mut TrieState_Option_CTrieData;
     root_shot.brk_pos = NULL as *mut libc::c_int;
     root_shot.n_brk_pos = pos_size;
     root_shot.cur_brk_pos = 0 as libc::c_int;
@@ -535,7 +533,7 @@ unsafe extern "C" fn brk_shot_destruct(mut shot: *mut BrkShot) {
 
 #[no_mangle]
 #[deprecated(note = "Use BrkEnv::new()")]
-pub unsafe extern "C" fn brk_env_new(mut brk: *mut ThBrk) -> *mut BrkEnv {
+pub extern "C" fn brk_env_new(brk: &ThBrk) -> *mut BrkEnv {
     let mut env = BrkEnv::new(brk);
     Box::into_raw(Box::new(env))
 }
