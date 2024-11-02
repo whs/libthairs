@@ -78,15 +78,20 @@ struct BrkShot {
     penalty: libc::c_int,
 }
 
+impl BrkShot {
+    // TODO: Deprecate this once the type settles
+    fn brk_pos_slice(&self) -> &[i32] {
+        unsafe { slice::from_raw_parts(self.brk_pos, self.cur_brk_pos as usize) }
+    }
+}
+
 #[derive(Clone)]
 #[repr(C)]
 struct BestBrk {
-    brk_pos: *mut libc::c_int,
-    // TODO: Change type to usize
-    n_brk_pos: libc::c_int,
-    cur_brk_pos: libc::c_int,
-    str_pos: libc::c_int,
-    penalty: libc::c_int,
+    brk_pos: Box<[i32]>,
+    cur_brk_pos: i32,
+    str_pos: i32,
+    penalty: i32,
 }
 
 impl BestBrk {
@@ -94,18 +99,31 @@ impl BestBrk {
         assert!(n_brk_pos <= isize::MAX as usize / size_of::<i32>());
 
         Self {
-            brk_pos: Box::into_raw(vec![0; n_brk_pos].into_boxed_slice()) as *mut _,
-            n_brk_pos: n_brk_pos as i32,
+            brk_pos: vec![0; n_brk_pos].into_boxed_slice(),
             cur_brk_pos: 0,
             str_pos: 0,
             penalty: 0,
         }
     }
-}
 
-impl Drop for BestBrk {
-    fn drop(&mut self) {
-        unsafe { free(self.brk_pos as *mut libc::c_void) }
+    fn contest(&mut self, shot: &BrkShot) -> bool {
+        if shot.str_pos > self.str_pos
+            || shot.str_pos == self.str_pos
+                && (shot.penalty < self.penalty
+                    || shot.penalty == self.penalty && shot.cur_brk_pos <= self.cur_brk_pos)
+        {
+            self.clone_from_brkshot(shot);
+            return true;
+        }
+        false
+    }
+
+    fn clone_from_brkshot(&mut self, shot: &BrkShot) {
+        let shot_slice = shot.brk_pos_slice();
+        self.brk_pos[..shot_slice.len()].clone_from_slice(shot_slice);
+        self.cur_brk_pos = shot.cur_brk_pos;
+        self.str_pos = shot.str_pos;
+        self.penalty = shot.penalty;
     }
 }
 
@@ -114,7 +132,8 @@ pub struct RecovHist {
     pos: libc::c_int,
     recov: libc::c_int,
 }
-pub const NULL: libc::c_int = 0 as libc::c_int;
+
+const NULL: libc::c_int = 0 as libc::c_int;
 
 #[no_mangle]
 pub(crate) extern "C" fn brk_maximal_do(
@@ -255,7 +274,7 @@ unsafe extern "C" fn brk_maximal_do_impl(
             *((*shot).brk_pos).offset(fresh3 as isize) = (*shot).str_pos;
         }
         if is_keep_node == 0 || (*shot).str_pos == len || (*shot).cur_brk_pos as usize >= n {
-            best_brk_contest(best_brk, shot);
+            best_brk_contest(NonNull::new_unchecked(best_brk), shot);
             pool = brk_pool_delete_node(pool, node, env);
         } else {
             let mut pool_tail: *mut BrkPool = pool;
@@ -287,11 +306,11 @@ unsafe extern "C" fn brk_maximal_do_impl(
     ret = (*best_brk).cur_brk_pos;
     memcpy(
         pos as *mut libc::c_void,
-        (*best_brk).brk_pos as *const libc::c_void,
+        (*best_brk).brk_pos.as_ptr() as *const libc::c_void,
         (ret as libc::c_ulong).wrapping_mul(::core::mem::size_of::<libc::c_int>() as libc::c_ulong),
     );
     brk_pool_free(pool, env);
-    best_brk_free(best_brk);
+    best_brk_free(NonNull::new_unchecked(best_brk));
     return ret;
 }
 unsafe extern "C" fn brk_recover_try(
@@ -638,36 +657,20 @@ unsafe extern "C" fn brk_pool_delete_node(
 }
 
 #[deprecated(note = "Use BestBrk::new()")]
-unsafe extern "C" fn best_brk_new(n_brk_pos: libc::c_int) -> *mut BestBrk {
+extern "C" fn best_brk_new(n_brk_pos: libc::c_int) -> *mut BestBrk {
     Box::into_raw(Box::new(BestBrk::new(n_brk_pos as usize)))
 }
 
 #[deprecated(note = "Drop best_brk")]
-unsafe extern "C" fn best_brk_free(mut best_brk: *mut BestBrk) {
-    free((*best_brk).brk_pos as *mut libc::c_void);
-    free(best_brk as *mut libc::c_void);
+unsafe extern "C" fn best_brk_free(mut best_brk: NonNull<BestBrk>) {
+    drop(Box::from_raw(best_brk.as_ptr()));
 }
 
-unsafe extern "C" fn best_brk_contest(
-    mut best_brk: *mut BestBrk,
-    mut shot: *const BrkShot,
-) -> libc::c_int {
-    if (*shot).str_pos > (*best_brk).str_pos
-        || (*shot).str_pos == (*best_brk).str_pos
-            && ((*shot).penalty < (*best_brk).penalty
-                || (*shot).penalty == (*best_brk).penalty
-                    && (*shot).cur_brk_pos <= (*best_brk).cur_brk_pos)
-    {
-        memcpy(
-            (*best_brk).brk_pos as *mut libc::c_void,
-            (*shot).brk_pos as *const libc::c_void,
-            ((*shot).cur_brk_pos as libc::c_ulong)
-                .wrapping_mul(::core::mem::size_of::<libc::c_int>() as libc::c_ulong),
-        );
-        (*best_brk).cur_brk_pos = (*shot).cur_brk_pos;
-        (*best_brk).str_pos = (*shot).str_pos;
-        (*best_brk).penalty = (*shot).penalty;
-        return 1 as libc::c_int;
+#[deprecated(note = "Use best_brk.contest(shot)")]
+extern "C" fn best_brk_contest(mut best_brk: NonNull<BestBrk>, shot: *const BrkShot) -> i32 {
+    let best_brk = unsafe { best_brk.as_mut() };
+    match best_brk.contest(unsafe { &*shot }) {
+        true => 1,
+        false => 0,
     }
-    return 0 as libc::c_int;
 }

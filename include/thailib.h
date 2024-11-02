@@ -11,8 +11,6 @@
 
 #define MAX_ACRONYM_FRAG_LEN (int)3
 
-#define NULL (int)0
-
 #define RECOVERED_WORDS (int)3
 
 #define TIS_KO_KAI 161
@@ -198,6 +196,8 @@
 #define TH_BLANK_BASE_GLYPH (int)221
 
 #define SIZE_MAX (unsigned long)18446744073709551615ull
+
+#define NULL (int)0
 
 #define THCHAR_ERR ~(int)0
 
