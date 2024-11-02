@@ -11,11 +11,7 @@
 
 #define MAX_ACRONYM_FRAG_LEN (int)3
 
-#define INT_MAX __INT_MAX__
-
 #define NULL (int)0
-
-#define __INT_MAX__ (int)2147483647
 
 #define RECOVERED_WORDS (int)3
 
@@ -247,8 +243,6 @@ typedef struct BrkEnv {
 typedef unsigned char thchar_t;
 
 typedef uint32_t Bool;
-
-typedef Trie_Option_CTrieData LegacyTrie;
 
 typedef struct thcell_t {
   thchar_t base;
@@ -857,8 +851,6 @@ extern Bool trie_state_is_walkable(const LegacyTrieState *s, AlphaChar c);
 
 extern Bool trie_state_walk(LegacyTrieState *s, AlphaChar c);
 
-extern LegacyTrieState *trie_root(const LegacyTrie *trie);
-
 extern void trie_state_copy(LegacyTrieState *dst, const LegacyTrieState *src);
 
 extern LegacyTrieState *trie_state_clone(const LegacyTrieState *s);
@@ -866,8 +858,6 @@ extern LegacyTrieState *trie_state_clone(const LegacyTrieState *s);
 extern void trie_state_free(LegacyTrieState *s);
 
 extern void trie_state_rewind(LegacyTrieState *s);
-
-extern void brk_brkpos_hints(const thchar_t *str, int len, char *hints);
 
 int brk_maximal_do(const thchar_t *s, int len, int *pos, uintptr_t n, struct BrkEnv *env);
 

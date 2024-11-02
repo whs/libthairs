@@ -1,13 +1,14 @@
+use crate::thbrk::common::brk_brkpos_hints_rs;
+use crate::thbrk::ThBrk;
 use crate::thctype::thchar_t;
-use crate::thwchar::thwchar::th_tis2uni_line;
+use crate::thwchar::thwchar::th_tis2uni_line_rs;
 use crate::thwctype::thwctype::thwchar_t;
 use ::libc;
 use datrie::AlphaChar;
-use std::ptr::NonNull;
+use std::slice;
 
 extern "C" {
     pub type TrieState_Option_CTrieData;
-    pub type Trie_Option_CTrieData;
     fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
     fn malloc(_: libc::c_ulong) -> *mut libc::c_void;
     fn realloc(_: *mut libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
@@ -15,14 +16,11 @@ extern "C" {
     fn trie_state_is_single(s: *const LegacyTrieState) -> Bool;
     fn trie_state_is_walkable(s: *const LegacyTrieState, c: AlphaChar) -> Bool;
     fn trie_state_walk(s: *mut LegacyTrieState, c: AlphaChar) -> Bool;
-    fn trie_root(trie: *const LegacyTrie) -> *mut LegacyTrieState;
     fn trie_state_copy(dst: *mut LegacyTrieState, src: *const LegacyTrieState);
     fn trie_state_clone(s: *const LegacyTrieState) -> *mut LegacyTrieState;
     fn trie_state_free(s: *mut LegacyTrieState);
     fn trie_state_rewind(s: *mut LegacyTrieState);
-    fn brk_brkpos_hints(str: *const thchar_t, len: libc::c_int, hints: *mut libc::c_char);
 }
-pub type LegacyTrie = Trie_Option_CTrieData;
 pub type LegacyTrieState = TrieState_Option_CTrieData;
 
 #[derive(Eq, PartialEq, Copy, Clone)]
@@ -34,84 +32,73 @@ const DA_FALSE: Bool = Bool(0);
 
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct ThBrk {
-    pub dict_trie: *mut LegacyTrie,
+struct BrkEnv {
+    env_brk: *mut ThBrk,
+    free_list: *mut BrkPool,
 }
 
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct BrkEnv {
-    pub env_brk: *mut ThBrk,
-    pub free_list: *mut BrkPool,
+struct BrkPool {
+    next: *mut BrkPool,
+    shot: BrkShot,
 }
 
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct BrkPool {
-    pub next: *mut BrkPool,
-    pub shot: BrkShot,
+struct BrkShot {
+    dict_state: *mut LegacyTrieState,
+    str_pos: libc::c_int,
+    brk_pos: *mut libc::c_int,
+    n_brk_pos: libc::c_int,
+    cur_brk_pos: libc::c_int,
+    penalty: libc::c_int,
 }
 
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct BrkShot {
-    pub dict_state: *mut LegacyTrieState,
-    pub str_pos: libc::c_int,
-    pub brk_pos: *mut libc::c_int,
-    pub n_brk_pos: libc::c_int,
-    pub cur_brk_pos: libc::c_int,
-    pub penalty: libc::c_int,
+struct BestBrk {
+    brk_pos: *mut libc::c_int,
+    n_brk_pos: libc::c_int,
+    cur_brk_pos: libc::c_int,
+    str_pos: libc::c_int,
+    penalty: libc::c_int,
 }
 
 #[derive(Copy, Clone)]
-#[repr(C)]
-pub struct BestBrk {
-    pub brk_pos: *mut libc::c_int,
-    pub n_brk_pos: libc::c_int,
-    pub cur_brk_pos: libc::c_int,
-    pub str_pos: libc::c_int,
-    pub penalty: libc::c_int,
-}
-
-#[derive(Copy, Clone)]
-#[repr(C)]
 pub struct RecovHist {
-    pub pos: libc::c_int,
-    pub recov: libc::c_int,
+    pos: libc::c_int,
+    recov: libc::c_int,
 }
-pub const INT_MAX: libc::c_int = __INT_MAX__;
 pub const NULL: libc::c_int = 0 as libc::c_int;
-pub const __INT_MAX__: libc::c_int = 2147483647 as libc::c_int;
+
 #[no_mangle]
-pub unsafe extern "C" fn brk_maximal_do(
-    mut s: *const thchar_t,
-    mut len: libc::c_int,
+pub(crate) extern "C" fn brk_maximal_do(
+    s: *const thchar_t,
+    len: libc::c_int,
     mut pos: *mut libc::c_int,
-    mut n: usize,
+    n: usize,
     mut env: *mut BrkEnv,
 ) -> libc::c_int {
-    let mut brkpos_hints: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut ws: *mut thwchar_t = 0 as *mut thwchar_t;
-    let mut ret: libc::c_int = 0;
-    brkpos_hints = malloc(len as libc::c_ulong) as *mut libc::c_char;
-    if !brkpos_hints.is_null() {
-        brk_brkpos_hints(s, len, brkpos_hints);
-        ws = malloc(
-            ((len + 1 as libc::c_int) as libc::c_ulong)
-                .wrapping_mul(::core::mem::size_of::<thwchar_t>() as libc::c_ulong),
-        ) as *mut thwchar_t;
-        if ws.is_null() {
-            free(brkpos_hints as *mut libc::c_void);
-        } else {
-            th_tis2uni_line(s, NonNull::new_unchecked(ws), (len + 1) as usize);
-            ret = brk_maximal_do_impl(ws, len, brkpos_hints, pos, n, env);
-            free(ws as *mut libc::c_void);
-            free(brkpos_hints as *mut libc::c_void);
-            return ret;
-        }
+    let s = unsafe { slice::from_raw_parts(s, len as usize) };
+    // let pos = unsafe { slice::from_raw_parts_mut(pos, n as usize) };
+    let brkpos_hints = brk_brkpos_hints_rs(s);
+
+    let mut ws = th_tis2uni_line_rs(s);
+    ws.push(0);
+
+    unsafe {
+        brk_maximal_do_impl(
+            ws.as_ptr(),
+            (ws.len() - 1) as libc::c_int,
+            brkpos_hints.as_slice() as *const [bool] as *const i8,
+            pos,
+            n,
+            env,
+        )
     }
-    return 0 as libc::c_int;
 }
+
 unsafe extern "C" fn brk_maximal_do_impl(
     mut ws: *const thwchar_t,
     mut len: libc::c_int,
@@ -377,7 +364,8 @@ unsafe extern "C" fn brk_root_pool(
     if brk.is_null() {
         return NULL as *mut BrkPool;
     }
-    root_shot.dict_state = trie_root((*brk).dict_trie);
+    root_shot.dict_state =
+        Box::into_raw(Box::new((*brk).dict_trie.root())) as *mut TrieState_Option_CTrieData;
     root_shot.brk_pos = NULL as *mut libc::c_int;
     root_shot.n_brk_pos = pos_size;
     root_shot.cur_brk_pos = 0 as libc::c_int;
@@ -542,7 +530,7 @@ unsafe extern "C" fn brk_pool_get_node(mut pool: *mut BrkPool) -> *mut BrkPool {
     let mut min_pos: libc::c_int = 0;
     let mut chosen: *mut BrkPool = 0 as *mut BrkPool;
     chosen = NULL as *mut BrkPool;
-    min_pos = INT_MAX;
+    min_pos = i32::MAX;
     while !pool.is_null() {
         let mut pos: libc::c_int = 0;
         if 0 as libc::c_int == (*pool).shot.cur_brk_pos {

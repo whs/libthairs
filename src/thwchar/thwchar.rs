@@ -1,7 +1,7 @@
 use ::libc;
 use std::ffi::CStr;
 use std::ptr::NonNull;
-use std::{mem, slice};
+use std::slice;
 pub type size_t = libc::c_ulong;
 pub type wchar_t = libc::c_int;
 pub type thchar_t = libc::c_uchar;
@@ -508,7 +508,13 @@ pub unsafe extern "C" fn th_tis2uni(mut c: thchar_t) -> thwchar_t {
 }
 
 /// Convert string from TIS-620 to Unicode
+pub fn th_tis2uni_line_rs(s: &[thchar_t]) -> Vec<thwchar_t> {
+    s.iter().map(|c| unsafe { th_tis2uni(*c) }).collect()
+}
+
+/// Convert string from TIS-620 to Unicode
 #[no_mangle]
+#[deprecated(note = "Use th_tis2uni_line_rs + push(0)")]
 pub extern "C" fn th_tis2uni_line(
     s: *const thchar_t,
     mut result: NonNull<thwchar_t>,
