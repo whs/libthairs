@@ -35,39 +35,22 @@ const DA_FALSE: Bool = Bool(0);
 #[repr(C)]
 struct BrkEnv {
     env_brk: *mut ThBrk,
-    free_list: *mut BrkPool,
 }
 
 impl BrkEnv {
     fn new(brk: *mut ThBrk) -> Self {
-        Self {
-            env_brk: brk,
-            free_list: ptr::null_mut(),
-        }
+        Self { env_brk: brk }
     }
 }
 
-impl Drop for BrkEnv {
-    fn drop(&mut self) {
-        unsafe {
-            while let Some(free_list) = self.free_list.as_mut() {
-                let next = free_list.next;
-                brk_shot_destruct(&mut free_list.shot);
-                free(free_list as *mut BrkPool as *mut libc::c_void);
-                self.free_list = next;
-            }
-        }
-    }
-}
-
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 #[repr(C)]
 struct BrkPool {
     next: *mut BrkPool,
     shot: BrkShot,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 #[repr(C)]
 struct BrkShot {
     dict_state: *mut LegacyTrieState,
@@ -84,6 +67,19 @@ impl BrkShot {
         unsafe { slice::from_raw_parts(self.brk_pos, self.cur_brk_pos as usize) }
     }
 }
+
+// impl Drop for BrkShot {
+//     fn drop(&mut self) {
+//         unsafe {
+//             if !self.dict_state.is_null() {
+//                 trie_state_free(self.dict_state);
+//             }
+//             if !self.brk_pos.is_null() {
+//                 free(self.brk_pos as *mut libc::c_void);
+//             }
+//         }
+//     }
+// }
 
 #[derive(Clone)]
 #[repr(C)]
@@ -525,7 +521,10 @@ unsafe extern "C" fn brk_shot_reuse(mut dst: *mut BrkShot, mut src: *const BrkSh
     (*dst).cur_brk_pos = (*src).cur_brk_pos;
     (*dst).penalty = (*src).penalty;
 }
+
 unsafe extern "C" fn brk_shot_destruct(mut shot: *mut BrkShot) {
+    // XXX: This can't be ported to Drop impl, as shot can be a stack pointer
+    // and not a Box
     if !((*shot).dict_state).is_null() {
         trie_state_free((*shot).dict_state);
     }
@@ -551,28 +550,25 @@ unsafe extern "C" fn brk_pool_node_new(
     mut shot: *const BrkShot,
     mut env: *mut BrkEnv,
 ) -> *mut BrkPool {
+    // TODO: Originally this can reused freed nodes from a free list
     let mut node: *mut BrkPool = 0 as *mut BrkPool;
-    if !((*env).free_list).is_null() {
-        node = (*env).free_list;
-        (*env).free_list = (*(*env).free_list).next;
-        brk_shot_reuse(&mut (*node).shot, shot);
-    } else {
-        node = malloc(::core::mem::size_of::<BrkPool>() as libc::c_ulong) as *mut BrkPool;
-        if node.is_null() {
-            return NULL as *mut BrkPool;
-        }
-        if brk_shot_init(&mut (*node).shot, shot) != 0 as libc::c_int {
-            free(node as *mut libc::c_void);
-            return NULL as *mut BrkPool;
-        }
+    node = malloc(::core::mem::size_of::<BrkPool>() as libc::c_ulong) as *mut BrkPool;
+    if node.is_null() {
+        return NULL as *mut BrkPool;
+    }
+    if brk_shot_init(&mut (*node).shot, shot) != 0 as libc::c_int {
+        free(node as *mut libc::c_void);
+        return NULL as *mut BrkPool;
     }
     (*node).next = NULL as *mut BrkPool;
     return node;
 }
+
 unsafe extern "C" fn brk_pool_node_free(mut pool: *mut BrkPool, mut env: *mut BrkEnv) {
-    (*pool).next = (*env).free_list;
-    (*env).free_list = pool;
+    brk_shot_destruct((&mut (*pool).shot) as *mut BrkShot);
+    free(pool as *mut libc::c_void);
 }
+
 unsafe extern "C" fn brk_pool_free(mut pool: *mut BrkPool, mut env: *mut BrkEnv) {
     while !pool.is_null() {
         let mut next: *mut BrkPool = 0 as *mut BrkPool;

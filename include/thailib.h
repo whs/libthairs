@@ -219,30 +219,15 @@ typedef struct ThBrk {
   ThTrie *dict_trie;
 } ThBrk;
 
-typedef TrieState_Option_CTrieData LegacyTrieState;
-
-typedef struct BrkShot {
-  LegacyTrieState *dict_state;
-  int str_pos;
-  int *brk_pos;
-  int n_brk_pos;
-  int cur_brk_pos;
-  int penalty;
-} BrkShot;
-
-typedef struct BrkPool {
-  struct BrkPool *next;
-  struct BrkShot shot;
-} BrkPool;
-
 typedef struct BrkEnv {
   struct ThBrk *env_brk;
-  struct BrkPool *free_list;
 } BrkEnv;
 
 typedef unsigned char thchar_t;
 
 typedef uint32_t Bool;
+
+typedef TrieState_Option_CTrieData LegacyTrieState;
 
 typedef struct thcell_t {
   thchar_t base;
