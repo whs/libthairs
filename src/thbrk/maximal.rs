@@ -5,7 +5,8 @@ use crate::thwchar::thwchar::th_tis2uni_line_rs;
 use crate::thwctype::thwctype::thwchar_t;
 use ::libc;
 use datrie::AlphaChar;
-use std::slice;
+use std::ptr::NonNull;
+use std::{ptr, slice};
 
 extern "C" {
     pub type TrieState_Option_CTrieData;
@@ -30,11 +31,33 @@ struct Bool(u32);
 const DA_TRUE: Bool = Bool(1);
 const DA_FALSE: Bool = Bool(0);
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 #[repr(C)]
 struct BrkEnv {
     env_brk: *mut ThBrk,
     free_list: *mut BrkPool,
+}
+
+impl BrkEnv {
+    fn new(brk: *mut ThBrk) -> Self {
+        Self {
+            env_brk: brk,
+            free_list: ptr::null_mut(),
+        }
+    }
+}
+
+impl Drop for BrkEnv {
+    fn drop(&mut self) {
+        unsafe {
+            while let Some(free_list) = self.free_list.as_mut() {
+                let next = free_list.next;
+                brk_shot_destruct(&mut free_list.shot);
+                free(free_list as *mut BrkPool as *mut libc::c_void);
+                self.free_list = next;
+            }
+        }
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -55,14 +78,35 @@ struct BrkShot {
     penalty: libc::c_int,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 #[repr(C)]
 struct BestBrk {
     brk_pos: *mut libc::c_int,
+    // TODO: Change type to usize
     n_brk_pos: libc::c_int,
     cur_brk_pos: libc::c_int,
     str_pos: libc::c_int,
     penalty: libc::c_int,
+}
+
+impl BestBrk {
+    fn new(n_brk_pos: usize) -> Self {
+        assert!(n_brk_pos <= isize::MAX as usize / size_of::<i32>());
+
+        Self {
+            brk_pos: Box::into_raw(vec![0; n_brk_pos].into_boxed_slice()) as *mut _,
+            n_brk_pos: n_brk_pos as i32,
+            cur_brk_pos: 0,
+            str_pos: 0,
+            penalty: 0,
+        }
+    }
+}
+
+impl Drop for BestBrk {
+    fn drop(&mut self) {
+        unsafe { free(self.brk_pos as *mut libc::c_void) }
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -470,28 +514,20 @@ unsafe extern "C" fn brk_shot_destruct(mut shot: *mut BrkShot) {
         free((*shot).brk_pos as *mut libc::c_void);
     }
 }
+
 #[no_mangle]
+#[deprecated(note = "Use BrkEnv::new()")]
 pub unsafe extern "C" fn brk_env_new(mut brk: *mut ThBrk) -> *mut BrkEnv {
-    let mut env: *mut BrkEnv =
-        malloc(::core::mem::size_of::<BrkEnv>() as libc::c_ulong) as *mut BrkEnv;
-    if env.is_null() {
-        return NULL as *mut BrkEnv;
-    }
-    (*env).env_brk = brk;
-    (*env).free_list = NULL as *mut BrkPool;
-    return env;
+    let mut env = BrkEnv::new(brk);
+    Box::into_raw(Box::new(env))
 }
+
 #[no_mangle]
-pub unsafe extern "C" fn brk_env_free(mut env: *mut BrkEnv) {
-    while !((*env).free_list).is_null() {
-        let mut next: *mut BrkPool = 0 as *mut BrkPool;
-        next = (*(*env).free_list).next;
-        brk_shot_destruct(&mut (*(*env).free_list).shot);
-        free((*env).free_list as *mut libc::c_void);
-        (*env).free_list = next;
-    }
-    free(env as *mut libc::c_void);
+#[deprecated(note = "Drop the BrkEnv")]
+pub unsafe extern "C" fn brk_env_free(mut env: NonNull<BrkEnv>) {
+    drop(Box::from_raw(env.as_ptr()))
 }
+
 unsafe extern "C" fn brk_pool_node_new(
     mut shot: *const BrkShot,
     mut env: *mut BrkEnv,
@@ -600,32 +636,18 @@ unsafe extern "C" fn brk_pool_delete_node(
     brk_pool_node_free(node, env);
     return pool;
 }
-unsafe extern "C" fn best_brk_new(mut n_brk_pos: libc::c_int) -> *mut BestBrk {
-    let mut best_brk: *mut BestBrk = 0 as *mut BestBrk;
-    if n_brk_pos as usize > usize::MAX / size_of::<i32>() {
-        return NULL as *mut BestBrk;
-    }
-    best_brk = malloc(::core::mem::size_of::<BestBrk>() as libc::c_ulong) as *mut BestBrk;
-    if best_brk.is_null() {
-        return NULL as *mut BestBrk;
-    }
-    (*best_brk).brk_pos =
-        malloc((n_brk_pos as usize * size_of::<i32>()) as u64) as *mut libc::c_int;
-    if ((*best_brk).brk_pos).is_null() {
-        free(best_brk as *mut libc::c_void);
-        return NULL as *mut BestBrk;
-    } else {
-        (*best_brk).n_brk_pos = n_brk_pos;
-        (*best_brk).str_pos = 0 as libc::c_int;
-        (*best_brk).cur_brk_pos = (*best_brk).str_pos;
-        (*best_brk).penalty = 0 as libc::c_int;
-        return best_brk;
-    };
+
+#[deprecated(note = "Use BestBrk::new()")]
+unsafe extern "C" fn best_brk_new(n_brk_pos: libc::c_int) -> *mut BestBrk {
+    Box::into_raw(Box::new(BestBrk::new(n_brk_pos as usize)))
 }
+
+#[deprecated(note = "Drop best_brk")]
 unsafe extern "C" fn best_brk_free(mut best_brk: *mut BestBrk) {
     free((*best_brk).brk_pos as *mut libc::c_void);
     free(best_brk as *mut libc::c_void);
 }
+
 unsafe extern "C" fn best_brk_contest(
     mut best_brk: *mut BestBrk,
     mut shot: *const BrkShot,
