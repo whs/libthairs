@@ -9,10 +9,6 @@
 #include <stdlib.h>
 #include "stddef.h"
 
-#define MAX_ACRONYM_FRAG_LEN (int)3
-
-#define RECOVERED_WORDS (int)3
-
 #define TIS_KO_KAI 161
 
 #define TIS_KHO_KHAI 162
@@ -203,15 +199,9 @@
 
 #define TH_ERR ~(int)0
 
-typedef struct brk_class_t brk_class_t;
-
-typedef struct brk_op_t brk_op_t;
-
 typedef struct ThBrk ThBrk;
 
 typedef unsigned char thchar_t;
-
-typedef ROTrie<Option<CTrieData>> ThTrie;
 
 typedef uint32_t Bool;
 
@@ -672,31 +662,11 @@ int th_brk_insert_breaks(ThBrk *brk,
                          size_t out_sz,
                          const char *delim);
 
-int th_brk_find_breaks(ThBrk *brk, const thchar_t *s, int *pos, size_t pos_sz);
+int32_t th_brk_find_breaks(const ThBrk *brk, const thchar_t *s, int32_t *pos, uintptr_t pos_sz);
 
 int th_brk_line(const thchar_t *in_0, thchar_t *out, size_t out_sz, const char *delim);
 
-int th_brk(const thchar_t *s, int *pos, size_t pos_sz);
-
-/**
- * Get the global, shared instance of ThBrk
- *
- * The Rust version of this is thread safe
- */
-const ThBrk *brk_get_shared_brk(void);
-
-/**
- * Does nothing in the Rust version
- */
-void brk_free_shared_brk(void);
-
-ThTrie *brk_load_default_dict(void);
-
-void brk_brkpos_hints(const thchar_t *str, int32_t len, char *hints);
-
-struct brk_class_t brk_class(thchar_t c);
-
-struct brk_op_t brk_op(struct brk_class_t prev, struct brk_class_t next);
+int32_t th_brk(const thchar_t *s, int32_t *pos, uintptr_t pos_sz);
 
 extern void *memcpy(void*, const void*, unsigned long);
 

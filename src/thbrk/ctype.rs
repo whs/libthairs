@@ -1,7 +1,7 @@
 use crate::thctype::thchar_t;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub(crate) enum BrkClass {
+pub(super) enum BrkClass {
     /// Thai character
     Thai,
     /// Non-Thai Alphabet
@@ -550,7 +550,7 @@ const char_class: [BrkClass; 256] = [
 ];
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub(crate) enum BrkOp {
+pub(super) enum BrkOp {
     /// no break, even with space in between
     Prohibited = 0,
     Allowed = 1,
@@ -582,16 +582,10 @@ const break_table: [[BrkOp; 15]; 15] = [
     /*TERM*/ [_A, _A, _A, _P, _A, _I, _P, _P, _I, _I, _P, _A, _A, _P, _I],
 ];
 
-#[no_mangle]
-#[inline]
-pub extern "C" fn brk_class(c: thchar_t) -> BrkClass {
-    // TODO: Is this public API?
+pub(super) const fn brk_class(c: thchar_t) -> BrkClass {
     char_class[c as usize]
 }
 
-#[no_mangle]
-#[inline]
-pub extern "C" fn brk_op(prev: BrkClass, next: BrkClass) -> BrkOp {
-    // TODO: Is this public API?
+pub(super) const fn brk_op(prev: BrkClass, next: BrkClass) -> BrkOp {
     break_table[prev as usize][next as usize]
 }

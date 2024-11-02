@@ -2,7 +2,7 @@ mod common;
 mod ctype;
 mod maximal;
 
-use crate::thbrk::common::{brk_load_default_dict_rs, ThTrie};
+use crate::thbrk::common::{brk_load_default_dict, ThTrie};
 use crate::thbrk::ctype::{brk_class, brk_op, BrkClass, BrkOp};
 use crate::thbrk::maximal::{brk_maximal_do, BrkEnv};
 use crate::thctype::thchar_t;
@@ -11,7 +11,7 @@ use std::ffi::{CStr, OsStr};
 use std::os::unix::ffi::OsStrExt;
 use std::ptr::NonNull;
 use std::sync::LazyLock;
-use std::{io, ptr};
+use std::{ptr, slice};
 
 extern "C" {
     fn strcpy(_: *mut libc::c_char, _: *const libc::c_char) -> *mut libc::c_char;
@@ -21,61 +21,175 @@ extern "C" {
 }
 
 pub struct ThBrk {
-    dict_trie: ThTrie,
+    dict_trie: Option<ThTrie>,
 }
 
-pub const MAX_ACRONYM_FRAG_LEN: libc::c_int = 3 as libc::c_int;
+const MAX_ACRONYM_FRAG_LEN: isize = 3;
 
 impl ThBrk {
-    pub fn new(dict: ThTrie) -> Self {
+    pub fn new(dict: Option<ThTrie>) -> Self {
         ThBrk { dict_trie: dict }
     }
 
-    pub fn new_default() -> io::Result<ThBrk> {
-        Ok(ThBrk::new(brk_load_default_dict_rs()?))
+    pub fn new_default() -> ThBrk {
+        ThBrk::new(brk_load_default_dict().ok())
     }
 
     /// Find word break positions in TIS-620 string
-    pub fn find_breaks(&self, input: &[u8]) -> Vec<usize> {
-        self.find_breaks_limited(input, input.len())
+    pub fn find_breaks(&self, input: &[thchar_t]) -> Vec<i32> {
+        unsafe { self.find_breaks_limited(input, input.len()).0 }
     }
 
     /// Find word break positions in TIS-620 string, with limit
-    pub fn find_breaks_limited(&self, input: &[u8], limit: usize) -> Vec<usize> {
-        if input.len() == 0 {
-            return Vec::default();
+    pub unsafe fn find_breaks_limited(&self, s: &[thchar_t], limit: usize) -> (Vec<i32>, usize) {
+        let mut pos = vec![0; limit];
+
+        if s.len() == 0 {
+            return (pos, 0);
         }
 
-        todo!()
+        let mut prev_class = brk_class(s[0]);
+        let mut effective_class = brk_class(s[0]);
+        let mut chunk = s.as_ptr();
+        let mut acronym_end = s.as_ptr();
+        let mut p = s.as_ptr();
+        let mut cur_pos = 0;
+
+        let env = BrkEnv::new(self);
+        loop {
+            p = p.offset(1);
+            if *p == 0 || cur_pos >= limit {
+                break;
+            }
+
+            let mut new_class = brk_class(*p);
+
+            if BrkClass::Thai == prev_class || BrkClass::Alpha == prev_class {
+                // handle acronyms
+                if *p == '.' as u8 && p.offset_from(acronym_end) <= MAX_ACRONYM_FRAG_LEN {
+                    // the period after Thai/Alpha is part of the acronym
+                    new_class = prev_class;
+                    acronym_end = p.offset(1 as libc::c_int as isize);
+                } else if acronym_end > chunk {
+                    // an acronym was marked
+                    if new_class != prev_class || p.offset_from(acronym_end) > MAX_ACRONYM_FRAG_LEN
+                    {
+                        // end of Thai/Alpha chunk or entered non-acronym word,
+                        // jump back to the acronym end
+                        effective_class = brk_class('.' as thchar_t);
+                        prev_class = effective_class;
+                        chunk = acronym_end;
+                        p = chunk;
+                        new_class = brk_class(*p);
+                    }
+                }
+
+                // break chunk if leaving Thai chunk
+                if BrkClass::Thai == prev_class && BrkClass::Thai != new_class && p > chunk {
+                    let n_brk = brk_maximal_do(
+                        chunk,
+                        p.offset_from(chunk) as i32,
+                        (&mut pos[cur_pos]) as *mut i32,
+                        limit - cur_pos,
+                        &env,
+                    );
+
+                    for i in 0..(n_brk as usize) {
+                        pos[cur_pos + i] += chunk.offset_from(s.as_ptr()) as i32;
+                    }
+                    cur_pos += n_brk as usize;
+
+                    // remove last break if at string end
+                    // note that even if it's allowed, the table-lookup
+                    // operation below will take care of it anyway
+                    if cur_pos > 0 && pos[cur_pos - 1] == p.offset_from(s.as_ptr()) as i32 {
+                        cur_pos -= 1;
+                    }
+
+                    if cur_pos >= limit {
+                        break;
+                    }
+                }
+            }
+
+            // reset chunk on switching
+            if new_class != prev_class {
+                acronym_end = p;
+                chunk = p;
+            }
+
+            let op = brk_op(effective_class, new_class);
+
+            match op {
+                BrkOp::Allowed => {
+                    if !(*p == '\n' as thchar_t && *p.offset(-1) == '\r' as thchar_t) {
+                        pos[cur_pos] = p.offset_from(s.as_ptr()) as i32;
+                        cur_pos += 1;
+                    }
+                }
+                BrkOp::Indirect => {
+                    if prev_class == BrkClass::Space {
+                        pos[cur_pos] = p.offset_from(s.as_ptr()) as i32;
+                        cur_pos += 1;
+                    }
+                }
+                _ => {}
+            }
+
+            prev_class = new_class;
+            if op == BrkOp::Allowed || new_class != BrkClass::Space {
+                effective_class = new_class;
+            }
+        }
+
+        // break last Thai non-acronym chunk
+        if prev_class == BrkClass::Thai && acronym_end <= chunk && cur_pos < limit {
+            let n_brk = brk_maximal_do(
+                chunk,
+                p.offset_from(chunk) as i32,
+                (&mut pos[cur_pos]) as *mut i32,
+                limit - cur_pos,
+                &env,
+            );
+
+            for i in 0..(n_brk as usize) {
+                pos[cur_pos + i] += chunk.offset_from(s.as_ptr()) as i32;
+            }
+            cur_pos += n_brk as usize;
+
+            // remove last break if at string end
+            if cur_pos > 0 && pos[cur_pos - 1] == p.offset_from(s.as_ptr()) as i32 {
+                cur_pos -= 1;
+            }
+        }
+
+        (pos, cur_pos)
     }
 }
 
 impl Default for ThBrk {
     fn default() -> Self {
-        ThBrk::new(brk_load_default_dict_rs().expect("unable to load default dict"))
+        ThBrk::new(brk_load_default_dict().ok())
     }
 }
 
-pub static SHARED: LazyLock<Option<ThBrk>> = LazyLock::new(|| ThBrk::new_default().ok());
+pub static SHARED: LazyLock<ThBrk> = LazyLock::new(|| ThBrk::new_default());
 
 #[no_mangle]
 #[deprecated(note = "Use ThBrk::new() or ThBrk::new_default()")]
 pub extern "C" fn th_brk_new(dictpath: *const libc::c_char) -> *mut ThBrk {
+    // XXX: In the C version, a null ThBrk is equivalent to our ThBrk::default()
+    // Hence if data loading fail the result differs
     println!("th_brk_new rust");
 
     match unsafe { dictpath.as_ref() } {
         Some(path) => {
             let path_str = unsafe { CStr::from_ptr(path) };
             let path_os = OsStr::from_bytes(path_str.to_bytes());
-            match ThTrie::from_file(path_os) {
-                Ok(trie) => Box::into_raw(Box::new(ThBrk::new(trie))),
-                Err(_) => ptr::null_mut(),
-            }
+            let trie = ThTrie::from_file(path_os);
+            Box::into_raw(Box::new(ThBrk::new(trie.ok())))
         }
-        None => match ThBrk::new_default() {
-            Ok(v) => Box::into_raw(Box::new(v)),
-            Err(_) => ptr::null_mut(),
-        },
+        None => Box::into_raw(Box::new(ThBrk::new_default())),
     }
 }
 
@@ -110,7 +224,12 @@ pub unsafe extern "C" fn th_brk_insert_breaks(
     if brk_pos.is_null() {
         return 0 as libc::c_int;
     }
-    n_brk_pos = th_brk_find_breaks(brk, in_0, brk_pos, n_brk_pos) as libc::size_t;
+    n_brk_pos = th_brk_find_breaks(
+        brk.as_ref(),
+        in_0,
+        NonNull::new_unchecked(brk_pos),
+        n_brk_pos,
+    ) as libc::size_t;
     delim_len = strlen(delim) as libc::c_int;
     j = 0 as libc::size_t;
     i = j;
@@ -149,145 +268,28 @@ pub unsafe extern "C" fn th_brk_insert_breaks(
     free(brk_pos as *mut libc::c_void);
     return p_out.offset_from(out) as libc::c_long as libc::c_int;
 }
+
 #[no_mangle]
-pub unsafe extern "C" fn th_brk_find_breaks(
-    mut brk: *mut ThBrk,
-    mut s: *const thchar_t,
-    mut pos: *mut libc::c_int,
-    mut pos_sz: libc::size_t,
-) -> libc::c_int {
-    let mut prev_class = BrkClass::Thai;
-    let mut effective_class = BrkClass::Thai;
-    let mut chunk: *const thchar_t = 0 as *const thchar_t;
-    let mut acronym_end: *const thchar_t = 0 as *const thchar_t;
-    let mut p: *const thchar_t = 0 as *const thchar_t;
-    let mut cur_pos: libc::c_int = 0;
-    if *s == 0 {
-        return 0 as libc::c_int;
-    }
-    acronym_end = s;
-    chunk = acronym_end;
-    p = chunk;
-    effective_class = brk_class(*p);
-    prev_class = effective_class;
-    cur_pos = 0 as libc::c_int;
-    let env = BrkEnv::new(brk.as_ref().or(SHARED.as_ref()));
-    loop {
-        p = p.offset(1);
-        if !(*p as libc::c_int != 0 && (cur_pos as libc::size_t) < pos_sz) {
-            break;
-        }
-        let mut new_class = BrkClass::Thai;
-        let mut op = BrkOp::Prohibited;
-        new_class = brk_class(*p);
-        if BrkClass::Thai == prev_class || BrkClass::Alpha == prev_class {
-            if '.' as i32 == *p as libc::c_int
-                && p.offset_from(acronym_end) as libc::c_long
-                    <= MAX_ACRONYM_FRAG_LEN as libc::c_long
-            {
-                new_class = prev_class;
-                acronym_end = p.offset(1 as libc::c_int as isize);
-            } else if acronym_end > chunk {
-                if new_class as libc::c_uint != prev_class as libc::c_uint
-                    || p.offset_from(acronym_end) as libc::c_long
-                        > MAX_ACRONYM_FRAG_LEN as libc::c_long
-                {
-                    effective_class = brk_class('.' as i32 as thchar_t);
-                    prev_class = effective_class;
-                    chunk = acronym_end;
-                    p = chunk;
-                    new_class = brk_class(*p);
-                }
-            }
-            if BrkClass::Thai == prev_class && BrkClass::Thai != new_class && p > chunk {
-                let mut n_brk: libc::c_int = 0;
-                let mut i: libc::c_int = 0;
-                n_brk = brk_maximal_do(
-                    chunk,
-                    p.offset_from(chunk) as libc::c_long as libc::c_int,
-                    pos.offset(cur_pos as isize),
-                    pos_sz.wrapping_sub(cur_pos as libc::size_t),
-                    &env,
-                );
-                i = 0 as libc::c_int;
-                while i < n_brk {
-                    let ref mut fresh4 = *pos.offset((cur_pos + i) as isize);
-                    *fresh4 = (*fresh4 as libc::c_long + chunk.offset_from(s) as libc::c_long)
-                        as libc::c_int;
-                    i += 1;
-                    i;
-                }
-                cur_pos += n_brk;
-                if cur_pos > 0 as libc::c_int
-                    && *pos.offset((cur_pos - 1 as libc::c_int) as isize) as libc::c_long
-                        == p.offset_from(s) as libc::c_long
-                {
-                    cur_pos -= 1;
-                    cur_pos;
-                }
-                if cur_pos as libc::size_t >= pos_sz {
-                    break;
-                }
-            }
-        }
-        if new_class as libc::c_uint != prev_class as libc::c_uint {
-            acronym_end = p;
-            chunk = acronym_end;
-        }
-        op = brk_op(effective_class, new_class);
-        match op as libc::c_uint {
-            1 => {
-                if !('\n' as i32 == *p as libc::c_int
-                    && '\r' as i32 == *p.offset(-(1 as libc::c_int as isize)) as libc::c_int)
-                {
-                    let fresh5 = cur_pos;
-                    cur_pos = cur_pos + 1;
-                    *pos.offset(fresh5 as isize) = p.offset_from(s) as libc::c_long as libc::c_int;
-                }
-            }
-            2 => {
-                if BrkClass::Space == prev_class {
-                    let fresh6 = cur_pos;
-                    cur_pos = cur_pos + 1;
-                    *pos.offset(fresh6 as isize) = p.offset_from(s) as libc::c_long as libc::c_int;
-                }
-            }
-            _ => {}
-        }
-        prev_class = new_class;
-        if BrkOp::Allowed == op || BrkClass::Space != new_class {
-            effective_class = new_class;
-        }
-    }
-    if BrkClass::Thai == prev_class && acronym_end <= chunk && (cur_pos as libc::size_t) < pos_sz {
-        let mut n_brk_0: libc::c_int = 0;
-        let mut i_0: libc::c_int = 0;
-        n_brk_0 = brk_maximal_do(
-            chunk,
-            p.offset_from(chunk) as libc::c_long as libc::c_int,
-            pos.offset(cur_pos as isize),
-            pos_sz.wrapping_sub(cur_pos as libc::size_t),
-            &env,
-        );
-        i_0 = 0 as libc::c_int;
-        while i_0 < n_brk_0 {
-            let ref mut fresh7 = *pos.offset((cur_pos + i_0) as isize);
-            *fresh7 =
-                (*fresh7 as libc::c_long + chunk.offset_from(s) as libc::c_long) as libc::c_int;
-            i_0 += 1;
-            i_0;
-        }
-        cur_pos += n_brk_0;
-        if cur_pos > 0 as libc::c_int
-            && *pos.offset((cur_pos - 1 as libc::c_int) as isize) as libc::c_long
-                == p.offset_from(s) as libc::c_long
-        {
-            cur_pos -= 1;
-            cur_pos;
-        }
-    }
-    return cur_pos;
+#[deprecated(note = "Use (pos, out) = brk.find_breaks_limited(s, pos_sz). Check for null brk!")]
+pub extern "C" fn th_brk_find_breaks(
+    brk: Option<&ThBrk>,
+    s: *const thchar_t,
+    pos: NonNull<i32>,
+    pos_sz: usize,
+) -> i32 {
+    let s = unsafe { CStr::from_ptr(s as *const libc::c_char) };
+    let pos = unsafe { slice::from_raw_parts_mut(pos.as_ptr(), pos_sz) };
+
+    let (break_pos, count) = unsafe {
+        brk.unwrap_or_else(|| &*SHARED)
+            .find_breaks_limited(s.to_bytes(), pos_sz)
+    };
+
+    pos[..break_pos.len()].copy_from_slice(&break_pos);
+
+    count as i32
 }
+
 #[no_mangle]
 pub unsafe extern "C" fn th_brk_line(
     mut in_0: *const thchar_t,
@@ -295,30 +297,18 @@ pub unsafe extern "C" fn th_brk_line(
     mut out_sz: libc::size_t,
     mut delim: *const libc::c_char,
 ) -> libc::c_int {
-    return th_brk_insert_breaks(ptr::null_mut(), in_0, out, out_sz, delim);
-}
-#[no_mangle]
-pub unsafe extern "C" fn th_brk(
-    mut s: *const thchar_t,
-    mut pos: *mut libc::c_int,
-    mut pos_sz: libc::size_t,
-) -> libc::c_int {
-    return th_brk_find_breaks(ptr::null_mut(), s, pos, pos_sz);
+    th_brk_insert_breaks(ptr::null_mut(), in_0, out, out_sz, delim)
 }
 
-/// Get the global, shared instance of ThBrk
-///
-/// The Rust version of this is thread safe
 #[no_mangle]
-#[deprecated(note = "Use SHARED")]
-pub(crate) extern "C" fn brk_get_shared_brk() -> *const ThBrk {
-    match &*SHARED {
-        Some(brk) => brk,
-        None => ptr::null(),
-    }
-}
+#[deprecated(note = "Use (pos, out) = brk.find_breaks_limited(s, pos_sz). Check for null brk!")]
+pub extern "C" fn th_brk(mut s: *const thchar_t, mut pos: NonNull<i32>, pos_sz: usize) -> i32 {
+    let s = unsafe { CStr::from_ptr(s as *const libc::c_char) };
+    let pos = unsafe { slice::from_raw_parts_mut(pos.as_ptr(), pos_sz) };
 
-/// Does nothing in the Rust version
-#[no_mangle]
-#[deprecated(note = "Use SHARED")]
-pub(crate) unsafe extern "C" fn brk_free_shared_brk() {}
+    let (break_pos, count) = unsafe { SHARED.find_breaks_limited(s.to_bytes(), pos_sz) };
+
+    pos[..break_pos.len()].copy_from_slice(&break_pos);
+
+    count as i32
+}

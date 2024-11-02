@@ -3,12 +3,9 @@ use crate::tis::{
     TIS_KO_KAI, TIS_LU, TIS_MAITAIKHU, TIS_MAI_HAN_AKAT, TIS_O_ANG, TIS_RU, TIS_SARA_A,
     TIS_SARA_AA, TIS_SARA_AE, TIS_SARA_E, TIS_SARA_UEE, TIS_THANTHAKHAT, TIS_WO_WAEN,
 };
-use ::libc;
 use datrie::{CTrieData, ROTrie, TrieState};
-use std::ffi::CStr;
 use std::path::Path;
-use std::ptr::NonNull;
-use std::{env, io, ptr, slice};
+use std::{env, io};
 
 const DICT_DIR: &'static str = "share/libthai";
 const DICT_NAME: &'static str = "thbrk";
@@ -16,7 +13,7 @@ const DICT_NAME: &'static str = "thbrk";
 pub type ThTrie = ROTrie<Option<CTrieData>>;
 pub type ThTrieState<'a> = TrieState<'a, Option<CTrieData>>;
 
-pub fn brk_load_default_dict_rs() -> io::Result<ThTrie> {
+pub(super) fn brk_load_default_dict() -> io::Result<ThTrie> {
     let env = env::var("LIBTHAI_DICTDIR");
     let dict_file = match env {
         Ok(v) => Path::new(&v).join(format!("{}.tri", DICT_NAME)),
@@ -26,16 +23,7 @@ pub fn brk_load_default_dict_rs() -> io::Result<ThTrie> {
     ThTrie::from_file(dict_file)
 }
 
-#[no_mangle]
-#[deprecated(note = "Use brk_load_default_dict_rs")]
-pub(crate) extern "C" fn brk_load_default_dict() -> *mut ThTrie {
-    match brk_load_default_dict_rs() {
-        Ok(v) => Box::into_raw(Box::new(v)),
-        Err(_) => ptr::null_mut(),
-    }
-}
-
-pub fn brk_brkpos_hints_rs(str: &[thchar_t]) -> Vec<bool> {
+pub(super) fn brk_brkpos_hints(str: &[thchar_t]) -> Vec<bool> {
     let mut hints = vec![false; str.len()];
 
     let mut i = 0;
@@ -105,26 +93,4 @@ pub fn brk_brkpos_hints_rs(str: &[thchar_t]) -> Vec<bool> {
     }
 
     hints
-}
-
-// TODO: Remove once nobody use it. Rename the _rs version to no _rs
-#[no_mangle]
-#[deprecated(note = "Use brk_brkpos_hints_rs")]
-pub(crate) extern "C" fn brk_brkpos_hints(
-    str: *const thchar_t,
-    len: i32,
-    mut hints: NonNull<libc::c_char>,
-) {
-    let str = unsafe {
-        match len {
-            v if v < 0 => CStr::from_ptr(str as *const i8).to_bytes(),
-            _ => slice::from_raw_parts(str, len as usize),
-        }
-    };
-    let hints = unsafe { slice::from_raw_parts_mut(hints.as_mut(), str.len()) };
-
-    let out = brk_brkpos_hints_rs(str);
-    for (index, hint) in out.iter().enumerate() {
-        hints[index] = if *hint { 1 } else { 0 };
-    }
 }

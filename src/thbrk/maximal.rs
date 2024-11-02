@@ -1,4 +1,4 @@
-use crate::thbrk::common::brk_brkpos_hints_rs;
+use crate::thbrk::common::brk_brkpos_hints;
 use crate::thbrk::ThBrk;
 use crate::thctype::thchar_t;
 use crate::thwchar::thwchar::th_tis2uni_line_rs;
@@ -9,7 +9,7 @@ use std::ptr::NonNull;
 use std::{ptr, slice};
 
 extern "C" {
-    pub type TrieState_Option_CTrieData;
+    type TrieState_Option_CTrieData;
     fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
     fn malloc(_: libc::c_ulong) -> *mut libc::c_void;
     fn realloc(_: *mut libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
@@ -22,7 +22,7 @@ extern "C" {
     fn trie_state_free(s: *mut LegacyTrieState);
     fn trie_state_rewind(s: *mut LegacyTrieState);
 }
-pub type LegacyTrieState = TrieState_Option_CTrieData;
+type LegacyTrieState = TrieState_Option_CTrieData;
 
 #[derive(Eq, PartialEq, Copy, Clone)]
 #[repr(transparent)]
@@ -31,13 +31,12 @@ struct Bool(u32);
 const DA_TRUE: Bool = Bool(1);
 const DA_FALSE: Bool = Bool(0);
 
-#[derive(Default)]
 pub(super) struct BrkEnv<'brk> {
-    brk: Option<&'brk ThBrk>,
+    brk: &'brk ThBrk,
 }
 
 impl<'brk> BrkEnv<'brk> {
-    pub(super) fn new(brk: Option<&'brk ThBrk>) -> Self {
+    pub(super) fn new(brk: &'brk ThBrk) -> Self {
         Self { brk }
     }
 }
@@ -123,15 +122,14 @@ impl BestBrk {
 }
 
 #[derive(Copy, Clone)]
-pub struct RecovHist {
+struct RecovHist {
     pos: libc::c_int,
     recov: libc::c_int,
 }
 
 const NULL: libc::c_int = 0 as libc::c_int;
 
-#[no_mangle]
-pub(crate) fn brk_maximal_do(
+pub(super) fn brk_maximal_do(
     s: *const thchar_t,
     len: i32,
     mut pos: *mut i32,
@@ -140,7 +138,7 @@ pub(crate) fn brk_maximal_do(
 ) -> libc::c_int {
     let s = unsafe { slice::from_raw_parts(s, len as usize) };
     // let pos = unsafe { slice::from_raw_parts_mut(pos, n as usize) };
-    let brkpos_hints = brk_brkpos_hints_rs(s);
+    let brkpos_hints = brk_brkpos_hints(s);
 
     let mut ws = th_tis2uni_line_rs(s);
     ws.push(0);
@@ -414,12 +412,11 @@ unsafe extern "C" fn brk_root_pool(pos_size: i32, env: &BrkEnv) -> *mut BrkPool 
         penalty: 0,
     };
     pool = NULL as *mut BrkPool;
-    let brk = match (*env).brk {
-        Some(v) => v,
+    let dict_trie = match &(*env).brk.dict_trie {
+        Some(v) => v.root(),
         None => return ptr::null_mut(),
     };
-    root_shot.dict_state =
-        Box::into_raw(Box::new(brk.dict_trie.root())) as *mut TrieState_Option_CTrieData;
+    root_shot.dict_state = Box::into_raw(Box::new(dict_trie)) as *mut TrieState_Option_CTrieData;
     root_shot.brk_pos = NULL as *mut libc::c_int;
     root_shot.n_brk_pos = pos_size;
     root_shot.cur_brk_pos = 0 as libc::c_int;
@@ -432,7 +429,7 @@ unsafe extern "C" fn brk_root_pool(pos_size: i32, env: &BrkEnv) -> *mut BrkPool 
     brk_shot_destruct(&mut root_shot);
     return pool;
 }
-pub const RECOVERED_WORDS: libc::c_int = 3 as libc::c_int;
+const RECOVERED_WORDS: libc::c_int = 3 as libc::c_int;
 unsafe extern "C" fn brk_recover(
     mut wtext: *const thwchar_t,
     mut len: libc::c_int,
@@ -631,17 +628,17 @@ unsafe extern "C" fn brk_pool_delete_node(
 }
 
 #[deprecated(note = "Use BestBrk::new()")]
-extern "C" fn best_brk_new(n_brk_pos: libc::c_int) -> *mut BestBrk {
+fn best_brk_new(n_brk_pos: libc::c_int) -> *mut BestBrk {
     Box::into_raw(Box::new(BestBrk::new(n_brk_pos as usize)))
 }
 
 #[deprecated(note = "Drop best_brk")]
-unsafe extern "C" fn best_brk_free(mut best_brk: NonNull<BestBrk>) {
+unsafe fn best_brk_free(mut best_brk: NonNull<BestBrk>) {
     drop(Box::from_raw(best_brk.as_ptr()));
 }
 
 #[deprecated(note = "Use best_brk.contest(shot)")]
-extern "C" fn best_brk_contest(mut best_brk: NonNull<BestBrk>, shot: *const BrkShot) -> i32 {
+fn best_brk_contest(mut best_brk: NonNull<BestBrk>, shot: *const BrkShot) -> i32 {
     let best_brk = unsafe { best_brk.as_mut() };
     match best_brk.contest(unsafe { &*shot }) {
         true => 1,
