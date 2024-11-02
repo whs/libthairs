@@ -4,6 +4,7 @@ mod maximal;
 
 use crate::thbrk::common::{brk_load_default_dict_rs, ThTrie};
 use crate::thbrk::ctype::{brk_class, brk_op, BrkClass, BrkOp};
+use crate::thbrk::maximal::{brk_maximal_do, BrkEnv};
 use crate::thctype::thchar_t;
 use ::libc;
 use std::ffi::{CStr, OsStr};
@@ -13,20 +14,10 @@ use std::sync::LazyLock;
 use std::{io, ptr};
 
 extern "C" {
-    pub type BrkEnv;
     fn strcpy(_: *mut libc::c_char, _: *const libc::c_char) -> *mut libc::c_char;
     fn strlen(_: *const libc::c_char) -> libc::size_t;
     fn malloc(_: libc::size_t) -> *mut libc::c_void;
     fn free(_: *mut libc::c_void);
-    fn brk_env_new(brk: *mut ThBrk) -> *mut BrkEnv;
-    fn brk_env_free(env: *mut BrkEnv);
-    fn brk_maximal_do(
-        s: *const thchar_t,
-        len: libc::c_int,
-        pos: *mut libc::c_int,
-        n: libc::size_t,
-        env: *mut BrkEnv,
-    ) -> libc::c_int;
 }
 
 pub struct ThBrk {
@@ -165,7 +156,6 @@ pub unsafe extern "C" fn th_brk_find_breaks(
     mut pos: *mut libc::c_int,
     mut pos_sz: libc::size_t,
 ) -> libc::c_int {
-    let mut env: *mut BrkEnv = 0 as *mut BrkEnv;
     let mut prev_class = BrkClass::Thai;
     let mut effective_class = BrkClass::Thai;
     let mut chunk: *const thchar_t = 0 as *const thchar_t;
@@ -181,11 +171,7 @@ pub unsafe extern "C" fn th_brk_find_breaks(
     effective_class = brk_class(*p);
     prev_class = effective_class;
     cur_pos = 0 as libc::c_int;
-    env = brk_env_new(if !brk.is_null() {
-        brk
-    } else {
-        brk_get_shared_brk().cast_mut()
-    });
+    let env = BrkEnv::new(brk.as_ref().or(SHARED.as_ref()));
     loop {
         p = p.offset(1);
         if !(*p as libc::c_int != 0 && (cur_pos as libc::size_t) < pos_sz) {
@@ -221,7 +207,7 @@ pub unsafe extern "C" fn th_brk_find_breaks(
                     p.offset_from(chunk) as libc::c_long as libc::c_int,
                     pos.offset(cur_pos as isize),
                     pos_sz.wrapping_sub(cur_pos as libc::size_t),
-                    env,
+                    &env,
                 );
                 i = 0 as libc::c_int;
                 while i < n_brk {
@@ -281,7 +267,7 @@ pub unsafe extern "C" fn th_brk_find_breaks(
             p.offset_from(chunk) as libc::c_long as libc::c_int,
             pos.offset(cur_pos as isize),
             pos_sz.wrapping_sub(cur_pos as libc::size_t),
-            env,
+            &env,
         );
         i_0 = 0 as libc::c_int;
         while i_0 < n_brk_0 {
@@ -300,7 +286,6 @@ pub unsafe extern "C" fn th_brk_find_breaks(
             cur_pos;
         }
     }
-    brk_env_free(env);
     return cur_pos;
 }
 #[no_mangle]

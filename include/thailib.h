@@ -205,8 +205,6 @@
 
 typedef struct brk_class_t brk_class_t;
 
-typedef struct BrkEnv BrkEnv;
-
 typedef struct brk_op_t brk_op_t;
 
 typedef struct ThBrk ThBrk;
@@ -664,12 +662,6 @@ extern void *malloc(size_t);
 
 extern void free(void*);
 
-extern struct BrkEnv *brk_env_new(ThBrk *brk);
-
-extern void brk_env_free(struct BrkEnv *env);
-
-extern int brk_maximal_do(const thchar_t *s, int len, int *pos, size_t n, struct BrkEnv *env);
-
 ThBrk *th_brk_new(const char *dictpath);
 
 void th_brk_delete(ThBrk *brk);
@@ -727,12 +719,6 @@ extern LegacyTrieState *trie_state_clone(const LegacyTrieState *s);
 extern void trie_state_free(LegacyTrieState *s);
 
 extern void trie_state_rewind(LegacyTrieState *s);
-
-int brk_maximal_do(const thchar_t *s, int len, int *pos, uintptr_t n, struct BrkEnv *env);
-
-struct BrkEnv *brk_env_new(const ThBrk *brk);
-
-void brk_env_free(struct BrkEnv *env);
 
 void th_init_cell(struct thcell_t *cell);
 

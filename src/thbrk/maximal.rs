@@ -32,13 +32,13 @@ const DA_TRUE: Bool = Bool(1);
 const DA_FALSE: Bool = Bool(0);
 
 #[derive(Default)]
-struct BrkEnv<'brk> {
+pub(super) struct BrkEnv<'brk> {
     brk: Option<&'brk ThBrk>,
 }
 
 impl<'brk> BrkEnv<'brk> {
-    fn new(brk: &'brk ThBrk) -> Self {
-        Self { brk: Some(brk) }
+    pub(super) fn new(brk: Option<&'brk ThBrk>) -> Self {
+        Self { brk }
     }
 }
 
@@ -131,12 +131,12 @@ pub struct RecovHist {
 const NULL: libc::c_int = 0 as libc::c_int;
 
 #[no_mangle]
-pub(crate) extern "C" fn brk_maximal_do(
+pub(crate) fn brk_maximal_do(
     s: *const thchar_t,
-    len: libc::c_int,
-    mut pos: *mut libc::c_int,
+    len: i32,
+    mut pos: *mut i32,
     n: usize,
-    mut env: *mut BrkEnv,
+    env: &BrkEnv,
 ) -> libc::c_int {
     let s = unsafe { slice::from_raw_parts(s, len as usize) };
     // let pos = unsafe { slice::from_raw_parts_mut(pos, n as usize) };
@@ -163,7 +163,7 @@ unsafe extern "C" fn brk_maximal_do_impl(
     mut brkpos_hints: *const libc::c_char,
     mut pos: *mut libc::c_int,
     mut n: usize,
-    mut env: *mut BrkEnv,
+    env: &BrkEnv,
 ) -> libc::c_int {
     let mut pool: *mut BrkPool = 0 as *mut BrkPool;
     let mut node: *mut BrkPool = 0 as *mut BrkPool;
@@ -256,7 +256,7 @@ unsafe extern "C" fn brk_maximal_do_impl(
                 && is_terminal
                 && trie_state_is_single((*shot).dict_state) == DA_FALSE
             {
-                let mut new_node: *mut BrkPool = brk_pool_node_new(shot, env);
+                let mut new_node: *mut BrkPool = brk_pool_node_new(shot);
                 if !new_node.is_null() {
                     node = new_node;
                     pool = brk_pool_add(pool, node);
@@ -270,7 +270,7 @@ unsafe extern "C" fn brk_maximal_do_impl(
         }
         if is_keep_node == 0 || (*shot).str_pos == len || (*shot).cur_brk_pos as usize >= n {
             best_brk_contest(NonNull::new_unchecked(best_brk), shot);
-            pool = brk_pool_delete_node(pool, node, env);
+            pool = brk_pool_delete_node(pool, node);
         } else {
             let mut pool_tail: *mut BrkPool = pool;
             let mut match_0: *mut BrkPool = 0 as *mut BrkPool;
@@ -293,7 +293,7 @@ unsafe extern "C" fn brk_maximal_do_impl(
                 } else {
                     del_node = match_0;
                 }
-                pool = brk_pool_delete_node(pool, del_node, env);
+                pool = brk_pool_delete_node(pool, del_node);
                 pool_tail = next;
             }
         }
@@ -304,7 +304,7 @@ unsafe extern "C" fn brk_maximal_do_impl(
         (*best_brk).brk_pos.as_ptr() as *const libc::c_void,
         (ret as libc::c_ulong).wrapping_mul(::core::mem::size_of::<libc::c_int>() as libc::c_ulong),
     );
-    brk_pool_free(pool, env);
+    brk_pool_free(pool);
     best_brk_free(NonNull::new_unchecked(best_brk));
     return ret;
 }
@@ -314,7 +314,7 @@ unsafe extern "C" fn brk_recover_try(
     mut brkpos_hints: *const libc::c_char,
     mut recov_words: usize,
     mut last_brk_pos: *mut libc::c_int,
-    mut env: *mut BrkEnv,
+    env: &BrkEnv,
 ) -> libc::c_int {
     let mut pool: *mut BrkPool = 0 as *mut BrkPool;
     let mut node: *mut BrkPool = 0 as *mut BrkPool;
@@ -356,11 +356,11 @@ unsafe extern "C" fn brk_recover_try(
                 }
             }
             if is_keep_node == 0 {
-                pool = brk_pool_delete_node(pool, node, env);
+                pool = brk_pool_delete_node(pool, node);
                 break;
             } else {
                 if (*shot).str_pos < len && trie_state_is_single((*shot).dict_state) == DA_FALSE {
-                    let mut new_node: *mut BrkPool = brk_pool_node_new(shot, env);
+                    let mut new_node: *mut BrkPool = brk_pool_node_new(shot);
                     if !new_node.is_null() {
                         node = new_node;
                         pool = brk_pool_add(pool, node);
@@ -377,7 +377,7 @@ unsafe extern "C" fn brk_recover_try(
                         *last_brk_pos =
                             *((*shot).brk_pos).offset((ret - 1 as libc::c_int) as isize);
                     }
-                    pool = brk_pool_delete_node(pool, node, env);
+                    pool = brk_pool_delete_node(pool, node);
                     if ret as usize == recov_words {
                         break 's_13;
                     } else {
@@ -392,20 +392,17 @@ unsafe extern "C" fn brk_recover_try(
                             break;
                         }
                         let mut next: *mut BrkPool = (*match_0).next;
-                        pool = brk_pool_delete_node(pool, match_0, env);
+                        pool = brk_pool_delete_node(pool, match_0);
                         pool_tail = next;
                     }
                 }
             }
         }
     }
-    brk_pool_free(pool, env);
+    brk_pool_free(pool);
     return ret;
 }
-unsafe extern "C" fn brk_root_pool(
-    mut pos_size: libc::c_int,
-    mut env: *mut BrkEnv,
-) -> *mut BrkPool {
+unsafe extern "C" fn brk_root_pool(pos_size: i32, env: &BrkEnv) -> *mut BrkPool {
     let mut pool: *mut BrkPool = 0 as *mut BrkPool;
     let mut node: *mut BrkPool = 0 as *mut BrkPool;
     let mut root_shot: BrkShot = BrkShot {
@@ -428,7 +425,7 @@ unsafe extern "C" fn brk_root_pool(
     root_shot.cur_brk_pos = 0 as libc::c_int;
     root_shot.str_pos = root_shot.cur_brk_pos;
     root_shot.penalty = 0 as libc::c_int;
-    node = brk_pool_node_new(&mut root_shot, env);
+    node = brk_pool_node_new(&mut root_shot);
     if !node.is_null() {
         pool = brk_pool_add(pool, node);
     }
@@ -442,7 +439,7 @@ unsafe extern "C" fn brk_recover(
     mut pos: libc::c_int,
     mut brkpos_hints: *const libc::c_char,
     mut rh: *mut RecovHist,
-    mut env: *mut BrkEnv,
+    env: &BrkEnv,
 ) -> libc::c_int {
     let mut last_brk_pos: libc::c_int = 0 as libc::c_int;
     let mut n: libc::c_int = 0;
@@ -531,23 +528,7 @@ unsafe extern "C" fn brk_shot_destruct(mut shot: *mut BrkShot) {
     }
 }
 
-#[no_mangle]
-#[deprecated(note = "Use BrkEnv::new()")]
-pub extern "C" fn brk_env_new(brk: &ThBrk) -> *mut BrkEnv {
-    let mut env = BrkEnv::new(brk);
-    Box::into_raw(Box::new(env))
-}
-
-#[no_mangle]
-#[deprecated(note = "Drop the BrkEnv")]
-pub unsafe extern "C" fn brk_env_free(mut env: NonNull<BrkEnv>) {
-    drop(Box::from_raw(env.as_ptr()))
-}
-
-unsafe extern "C" fn brk_pool_node_new(
-    mut shot: *const BrkShot,
-    mut env: *mut BrkEnv,
-) -> *mut BrkPool {
+unsafe extern "C" fn brk_pool_node_new(mut shot: *const BrkShot) -> *mut BrkPool {
     // TODO: Originally this can reused freed nodes from a free list
     let mut node: *mut BrkPool = 0 as *mut BrkPool;
     node = malloc(::core::mem::size_of::<BrkPool>() as libc::c_ulong) as *mut BrkPool;
@@ -562,16 +543,16 @@ unsafe extern "C" fn brk_pool_node_new(
     return node;
 }
 
-unsafe extern "C" fn brk_pool_node_free(mut pool: *mut BrkPool, mut env: *mut BrkEnv) {
+unsafe extern "C" fn brk_pool_node_free(mut pool: *mut BrkPool) {
     brk_shot_destruct((&mut (*pool).shot) as *mut BrkShot);
     free(pool as *mut libc::c_void);
 }
 
-unsafe extern "C" fn brk_pool_free(mut pool: *mut BrkPool, mut env: *mut BrkEnv) {
+unsafe extern "C" fn brk_pool_free(mut pool: *mut BrkPool) {
     while !pool.is_null() {
         let mut next: *mut BrkPool = 0 as *mut BrkPool;
         next = (*pool).next;
-        brk_pool_node_free(pool, env);
+        brk_pool_node_free(pool);
         pool = next;
     }
 }
@@ -632,7 +613,6 @@ unsafe extern "C" fn brk_pool_add(mut pool: *mut BrkPool, mut node: *mut BrkPool
 unsafe extern "C" fn brk_pool_delete_node(
     mut pool: *mut BrkPool,
     mut node: *mut BrkPool,
-    mut env: *mut BrkEnv,
 ) -> *mut BrkPool {
     if pool == node {
         pool = (*pool).next;
@@ -646,7 +626,7 @@ unsafe extern "C" fn brk_pool_delete_node(
             (*p).next = (*node).next;
         }
     }
-    brk_pool_node_free(node, env);
+    brk_pool_node_free(node);
     return pool;
 }
 
