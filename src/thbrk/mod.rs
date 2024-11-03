@@ -38,18 +38,18 @@ impl ThBrk {
 
     /// Find word break positions in TIS-620 string
     pub fn find_breaks(&self, input: &[thchar_t]) -> Vec<i32> {
-        self.find_breaks_limited(input, input.len()).0
+        self.find_breaks_limited(input, input.len())
     }
 
     /// Find word break positions in TIS-620 string, with limit
-    pub fn find_breaks_limited(&self, s: &[thchar_t], limit: usize) -> (Vec<i32>, usize) {
+    pub fn find_breaks_limited(&self, s: &[thchar_t], limit: usize) -> Vec<i32> {
         const MAX_ACRONYM_FRAG_LEN: usize = 3;
 
-        let mut pos = vec![0; limit];
-
         if s.len() == 0 {
-            return (pos, 0);
+            return Vec::default();
         }
+
+        let mut pos = vec![0; limit];
 
         let mut prev_class = brk_class(s[0]);
         let mut effective_class = brk_class(s[0]);
@@ -167,7 +167,8 @@ impl ThBrk {
             }
         }
 
-        (pos, cur_pos)
+        pos.truncate(cur_pos);
+        pos
     }
 }
 
@@ -282,14 +283,14 @@ pub extern "C" fn th_brk_find_breaks(
     let s = unsafe { CStr::from_ptr(s as *const libc::c_char) };
     let pos = unsafe { slice::from_raw_parts_mut(pos.as_ptr(), pos_sz) };
 
-    let (break_pos, count) = unsafe {
+    let break_pos = unsafe {
         brk.unwrap_or_else(|| &*SHARED)
             .find_breaks_limited(s.to_bytes(), pos_sz)
     };
 
     pos[..break_pos.len()].copy_from_slice(&break_pos);
 
-    count as i32
+    break_pos.len() as i32
 }
 
 #[no_mangle]
@@ -308,9 +309,9 @@ pub extern "C" fn th_brk(s: *const thchar_t, mut pos: NonNull<i32>, pos_sz: usiz
     let s = unsafe { CStr::from_ptr(s as *const libc::c_char) };
     let pos = unsafe { slice::from_raw_parts_mut(pos.as_ptr(), pos_sz) };
 
-    let (break_pos, count) = unsafe { SHARED.find_breaks_limited(s.to_bytes(), pos_sz) };
+    let break_pos = unsafe { SHARED.find_breaks_limited(s.to_bytes(), pos_sz) };
 
     pos[..break_pos.len()].copy_from_slice(&break_pos);
 
-    count as i32
+    break_pos.len() as i32
 }
