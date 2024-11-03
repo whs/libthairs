@@ -20,7 +20,7 @@ extern "C" {
     fn free(_: *mut libc::c_void);
 }
 
-pub static SHARED: LazyLock<ThBrk> = LazyLock::new(|| ThBrk::new_default());
+pub static SHARED: LazyLock<ThBrk> = LazyLock::new(|| ThBrk::default());
 
 #[derive(Clone)]
 pub struct ThBrk {
@@ -32,8 +32,8 @@ impl ThBrk {
         ThBrk { dict_trie: dict }
     }
 
-    pub fn new_default() -> ThBrk {
-        ThBrk::new(brk_load_default_dict().ok())
+    pub fn has_dict(&self) -> bool {
+        self.dict_trie.is_some()
     }
 
     /// Find word break positions in TIS-620 string
@@ -179,10 +179,8 @@ impl Default for ThBrk {
 }
 
 #[no_mangle]
-#[deprecated(note = "Use ThBrk::new() or ThBrk::new_default()")]
+#[deprecated(note = "Use ThBrk::new() or ThBrk::default()")]
 pub extern "C" fn th_brk_new(dictpath: *const libc::c_char) -> *mut ThBrk {
-    // XXX: In the C version, a null ThBrk is equivalent to our ThBrk::default()
-    // Hence if data loading fail the result differs
     println!("th_brk_new rust");
 
     match unsafe { dictpath.as_ref() } {
@@ -190,9 +188,18 @@ pub extern "C" fn th_brk_new(dictpath: *const libc::c_char) -> *mut ThBrk {
             let path_str = unsafe { CStr::from_ptr(path) };
             let path_os = OsStr::from_bytes(path_str.to_bytes());
             let trie = ThTrie::from_file(path_os);
-            Box::into_raw(Box::new(ThBrk::new(trie.ok())))
+            match trie {
+                Ok(v) => Box::into_raw(Box::new(ThBrk::new(Some(v)))),
+                Err(_) => ptr::null_mut(),
+            }
         }
-        None => Box::into_raw(Box::new(ThBrk::new_default())),
+        None => {
+            let brk = ThBrk::default();
+            match brk.has_dict() {
+                true => Box::into_raw(Box::new(brk)),
+                false => ptr::null_mut(),
+            }
+        }
     }
 }
 
