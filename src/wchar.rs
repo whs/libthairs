@@ -19,14 +19,9 @@
 //! Wide char support for Thai
 
 use crate::{thchar_t, THCHAR_ERR};
-use ::libc;
-use null_terminated::Nul;
-use std::ptr::NonNull;
-use std::slice;
-use widestring::{WideCStr, WideChar};
 
 /// Thai character type for storing Unicode character
-pub type thwchar_t = WideChar;
+pub type thwchar_t = libc::wchar_t;
 
 /// Wide-character value indicating error
 pub const THWCHAR_ERR: thwchar_t = thwchar_t::MAX;
@@ -89,6 +84,7 @@ const tis620_1_uni_map_: [thwchar_t; 128] = [
     0x0e58, 0x0e59, 0x00ae, 0x00a9, WC_ERR, WC_ERR, WC_ERR, WC_ERR
 ];
 
+#[rustfmt::skip]
 const tis620_2_uni_map_: [thwchar_t; 128] = [
     0xf700, 0xf701, 0xf702, 0xf703, 0xf704, 0x2026, 0xf705, 0xf706, 0xf707, 0xf708, 0xf709, 0xf70a,
     0xf70b, 0xf70c, 0xf70d, 0xf70e, 0xf70f, 0x2018, 0x2019, 0x201c, 0x201d, 0x2022, 0x2013, 0x2014,
@@ -103,8 +99,8 @@ const tis620_2_uni_map_: [thwchar_t; 128] = [
     0x0e58, 0x0e59, 0x0e5a, 0x0e5b, 0xf718, 0xf719, 0xf71a, WC_ERR,
 ];
 
-#[no_mangle]
-pub const extern "C" fn th_tis2uni(c: thchar_t) -> thwchar_t {
+/// Convert character code from TIS-620 to Unicode.
+pub const fn tis2uni(c: thchar_t) -> thwchar_t {
     if c < 0x80 {
         c as thwchar_t
     } else {
@@ -113,34 +109,22 @@ pub const extern "C" fn th_tis2uni(c: thchar_t) -> thwchar_t {
 }
 
 /// Convert string from TIS-620 to Unicode
-pub fn th_tis2uni_line_rs(s: &[thchar_t]) -> Vec<thwchar_t> {
-    s.iter().map(|c| th_tis2uni(*c)).collect()
+pub fn tis2uni_str(s: &[thchar_t]) -> Vec<thwchar_t> {
+    s.iter().map(|c| tis2uni(*c)).collect()
 }
 
-/// Convert string from TIS-620 to Unicode
-#[no_mangle]
-#[deprecated(note = "Use th_tis2uni_line_rs + push(0)")]
-pub extern "C" fn th_tis2uni_line(
-    source: *const thchar_t,
-    mut result: NonNull<thwchar_t>,
-    n: usize,
-) -> libc::c_int {
-    let source = unsafe { Nul::new_unchecked(source) };
-    let mut result = unsafe { slice::from_raw_parts_mut(result.as_ptr(), n) };
-
-    let mut out_len = 0;
-    for (i, (src, dst)) in source.iter().zip(result[..n - 1].iter_mut()).enumerate() {
-        *dst = th_tis2uni(*src);
-        out_len = i;
-    }
-    result[out_len + 1] = 0;
-
-    out_len.try_into().unwrap_or(libc::c_int::MAX)
+/// Convert [`thwchar_t`] string to Rust String
+pub fn uni2rust(s: &[thwchar_t]) -> String {
+    s.iter()
+        .map(|c| match *c {
+            WC_ERR => char::REPLACEMENT_CHARACTER,
+            c => char::from_u32(c as u32).unwrap_or(char::REPLACEMENT_CHARACTER),
+        })
+        .collect()
 }
 
 /// Convert character code from Thai Windows extended code to Unicode.
-#[no_mangle]
-pub const extern "C" fn th_winthai2uni(c: thchar_t) -> thwchar_t {
+pub const fn winthai2uni(c: thchar_t) -> thwchar_t {
     if c < 0x80 {
         c as thwchar_t
     } else {
@@ -149,8 +133,7 @@ pub const extern "C" fn th_winthai2uni(c: thchar_t) -> thwchar_t {
 }
 
 /// Convert character code from Mac Thai extended code to Unicode
-#[no_mangle]
-pub const extern "C" fn th_macthai2uni(c: thchar_t) -> thwchar_t {
+pub const fn macthai2uni(c: thchar_t) -> thwchar_t {
     if c < 0x80 {
         c as thwchar_t
     } else {
@@ -159,8 +142,7 @@ pub const extern "C" fn th_macthai2uni(c: thchar_t) -> thwchar_t {
 }
 
 /// Convert character code from Unicode to TIS-620
-#[no_mangle]
-pub const extern "C" fn th_uni2tis(wc: thwchar_t) -> thchar_t {
+pub const fn uni2tis(wc: thwchar_t) -> thchar_t {
     match wc {
         wc if wc < 0x0080 => wc as thchar_t,
         wc if 0x0e00 <= wc && wc <= 0x0e5f => uni_tis620_0_map_[(wc - 0xe00) as usize],
@@ -171,37 +153,11 @@ pub const extern "C" fn th_uni2tis(wc: thwchar_t) -> thchar_t {
 /// Convert string from Unicode to TIS-620
 ///
 /// May contain internal [`THCHAR_ERR`] when characters are out of range
-pub fn th_uni2tis_line_rs(s: &[thwchar_t]) -> Vec<thchar_t> {
-    s.iter().map(|c| th_uni2tis(*c)).collect()
+pub fn uni2tis_str(s: &[thwchar_t]) -> Vec<thchar_t> {
+    s.iter().map(|c| uni2tis(*c)).collect()
 }
 
-/// Convert string from Unicode to TIS-620.
-#[no_mangle]
-#[deprecated(note = "Use th_uni2tis_line_rs + push(0)")]
-pub extern "C" fn th_uni2tis_line(
-    source: *const WideChar,
-    mut result: NonNull<thchar_t>,
-    n: usize,
-) -> libc::c_int {
-    let source = unsafe { WideCStr::from_ptr_str(source) };
-    let mut result = unsafe { slice::from_raw_parts_mut(result.as_ptr(), n) };
-
-    let mut out_len = 0;
-    for (i, (src, dst)) in source
-        .as_slice()
-        .iter()
-        .zip(result[..n - 1].iter_mut())
-        .enumerate()
-    {
-        *dst = th_uni2tis(*src);
-        out_len = i;
-    }
-    result[out_len + 1] = 0;
-
-    out_len.try_into().unwrap_or(libc::c_int::MAX)
-}
-
-fn uni2thai_ext_(wc: thwchar_t, rev_map: &[thwchar_t]) -> thchar_t {
+fn uni2thai_ext(wc: thwchar_t, rev_map: &[thwchar_t]) -> thchar_t {
     // wc assumed out of TIS range
     for c in 0x80..0xff {
         if rev_map[(c - 0x80) as usize] == wc {
@@ -213,21 +169,234 @@ fn uni2thai_ext_(wc: thwchar_t, rev_map: &[thwchar_t]) -> thchar_t {
 }
 
 /// Convert character code from Unicode to Thai Windows extended code
-#[no_mangle]
-pub extern "C" fn th_uni2winthai(wc: thwchar_t) -> thchar_t {
-    let c = th_uni2tis(wc);
+pub fn uni2winthai(wc: thwchar_t) -> thchar_t {
+    let c = uni2tis(wc);
     match c {
-        TH_ERR => uni2thai_ext_(wc, &tis620_2_uni_map_),
+        TH_ERR => uni2thai_ext(wc, &tis620_2_uni_map_),
         _ => c,
     }
 }
 
 /// Convert character code from Unicode to Mac Thai extended code
-#[no_mangle]
-pub extern "C" fn th_uni2macthai(mut wc: thwchar_t) -> thchar_t {
-    let c = th_uni2tis(wc);
+pub fn uni2macthai(wc: thwchar_t) -> thchar_t {
+    let c = uni2tis(wc);
     match c {
-        TH_ERR => uni2thai_ext_(wc, &tis620_1_uni_map_),
+        TH_ERR => uni2thai_ext(wc, &tis620_1_uni_map_),
         _ => c,
+    }
+}
+
+#[cfg(feature = "cffi")]
+mod cffi {
+    use super::*;
+    use crate::thchar_t;
+    use null_terminated::Nul;
+    use std::ptr::NonNull;
+    use std::slice;
+
+    /// Convert character code from TIS-620 to Unicode.
+    #[no_mangle]
+    pub const extern "C" fn th_tis2uni(c: thchar_t) -> thwchar_t {
+        tis2uni(c)
+    }
+
+    /// Convert string from TIS-620 to Unicode
+    #[no_mangle]
+    pub extern "C" fn th_tis2uni_line(
+        source: *const thchar_t,
+        mut result: NonNull<thwchar_t>,
+        n: usize,
+    ) -> libc::c_int {
+        if n == 0 {
+            return 0;
+        }
+
+        let source = unsafe { Nul::new_unchecked(source) };
+        let mut result = unsafe { slice::from_raw_parts_mut(result.as_ptr(), n) };
+
+        let mut out_len = 0;
+        for (src, dst) in source.iter().zip(result[..n - 1].iter_mut()) {
+            *dst = tis2uni(*src);
+            out_len += 1;
+        }
+        result[out_len] = 0;
+
+        out_len.try_into().unwrap_or(libc::c_int::MAX)
+    }
+
+    /// Convert character code from Thai Windows extended code to Unicode.
+    #[no_mangle]
+    pub const extern "C" fn th_winthai2uni(c: thchar_t) -> thwchar_t {
+        winthai2uni(c)
+    }
+
+    /// Convert character code from Mac Thai extended code to Unicode
+    #[no_mangle]
+    pub const extern "C" fn th_macthai2uni(c: thchar_t) -> thwchar_t {
+        macthai2uni(c)
+    }
+
+    /// Convert character code from Unicode to TIS-620
+    #[no_mangle]
+    pub const extern "C" fn th_uni2tis(wc: thwchar_t) -> thchar_t {
+        uni2tis(wc)
+    }
+
+    /// Convert string from Unicode to TIS-620.
+    #[no_mangle]
+    pub extern "C" fn th_uni2tis_line(
+        source: *const thwchar_t,
+        mut result: NonNull<thchar_t>,
+        n: usize,
+    ) -> libc::c_int {
+        if n == 0 {
+            return 0;
+        }
+
+        let source = unsafe { Nul::new_unchecked(source) };
+        let mut result = unsafe { slice::from_raw_parts_mut(result.as_ptr(), n) };
+
+        let mut out_len = 0;
+        for (src, dst) in source.iter().zip(result[..n - 1].iter_mut()) {
+            *dst = uni2tis(*src);
+            out_len += 1;
+        }
+        result[out_len] = 0;
+
+        out_len.try_into().unwrap_or(libc::c_int::MAX)
+    }
+
+    /// Convert character code from Unicode to Thai Windows extended code
+    #[no_mangle]
+    pub extern "C" fn th_uni2winthai(wc: thwchar_t) -> thchar_t {
+        uni2winthai(wc)
+    }
+
+    /// Convert character code from Unicode to Mac Thai extended code
+    #[no_mangle]
+    pub extern "C" fn th_uni2macthai(wc: thwchar_t) -> thchar_t {
+        uni2macthai(wc)
+    }
+}
+
+mod tests {
+    use super::*;
+    use std::ffi::CString;
+    use std::ptr::NonNull;
+
+    const tis_input: [u8; 32] = [
+        0xca, 0xc7, 0xd1, 0xca, 0xb4, 0xd5, 0xa4, 0xc3, 0xd1, 0xba, 0x20, 0xb9, 0xd5, 0xe8, 0xe0,
+        0xbb, 0xe7, 0xb9, 0xa1, 0xd2, 0xc3, 0xb7, 0xb4, 0xca, 0xcd, 0xba, 0xb5, 0xd1, 0xc7, 0xe0,
+        0xcd, 0xa7,
+    ];
+
+    const win_sample: [u8; 45] = [
+        0xbe, 0x8b, 0xcd, 0xbb, 0xd9, 0x86, 0xbe, 0xd5, 0xe8, 0xbb, 0x82, 0x9b, 0xae, 0xfc, 0x80,
+        0xd8, 0x90, 0xd8, 0xa1, 0xed, 0xd2, 0xbb, 0x99, 0xd2, 0xa1, 0xed, 0xe9, 0xd2, 0xbb, 0x99,
+        0x9c, 0xd2, 0xbb, 0x99, 0xd2, 0x20, 0x8c, 0xb7, 0x8b, 0x20, 0xd5, 0xa1, 0xe7, 0xbb, 0x9a,
+    ];
+
+    const mac_sample: [u8; 45] = [
+        0xbe, 0x88, 0xcd, 0xbb, 0xd9, 0x83, 0xbe, 0xd5, 0xe8, 0xbb, 0x95, 0x98, 0xae, 0xd8, 0xb0,
+        0xd8, 0xad, 0xd8, 0xa1, 0xed, 0xd2, 0xbb, 0x8f, 0xd2, 0xa1, 0xed, 0xe9, 0xd2, 0xbb, 0x8f,
+        0x99, 0xd2, 0xbb, 0x8f, 0xd2, 0x20, 0x89, 0xb7, 0x88, 0x20, 0xd5, 0xa1, 0xe7, 0xbb, 0x93,
+    ];
+
+    #[cfg(feature = "cffi")]
+    #[test]
+    fn test_c_tis2uni_line() {
+        let input = CString::new(tis_input).unwrap();
+        let mut buf = vec![0; 1000];
+        let out_len = cffi::th_tis2uni_line(
+            input.as_ptr().cast(),
+            NonNull::new(buf.as_mut_ptr()).unwrap(),
+            buf.len(),
+        );
+        assert_eq!(input.count_bytes(), out_len as usize);
+        assert_eq!(buf[out_len as usize], 0);
+    }
+
+    #[cfg(feature = "cffi")]
+    #[test]
+    fn test_c_tis2uni_line_underflow() {
+        let input = CString::new(tis_input).unwrap();
+        let mut buf = vec![0; 10];
+        let out_len = cffi::th_tis2uni_line(
+            input.as_ptr().cast(),
+            NonNull::new(buf.as_mut_ptr()).unwrap(),
+            buf.len(),
+        );
+        assert_eq!(buf.len() - 1, out_len as usize);
+        assert_eq!(buf[out_len as usize], 0);
+    }
+
+    #[test]
+    fn test_tis2uni_line() {
+        assert_eq!(
+            uni2rust(&tis2uni_str(&tis_input)),
+            "สวัสดีครับ นี่เป็นการทดสอบตัวเอง"
+        );
+    }
+
+    #[cfg(feature = "cffi")]
+    #[test]
+    fn test_c_convert_reversible() {
+        let input = CString::new(tis_input).unwrap();
+
+        let mut wchar_buf = vec![0; 1000];
+        cffi::th_tis2uni_line(
+            input.as_ptr().cast(),
+            NonNull::new(wchar_buf.as_mut_ptr()).unwrap(),
+            wchar_buf.len(),
+        );
+
+        let mut tis_buf = vec![0; 1000];
+        let tis_len = cffi::th_uni2tis_line(
+            wchar_buf.as_ptr().cast(),
+            NonNull::new(tis_buf.as_mut_ptr()).unwrap(),
+            tis_buf.len(),
+        );
+
+        assert_eq!(tis_input.len(), tis_len as usize);
+        assert_eq!(tis_input, tis_buf[..tis_len as usize]);
+        assert_eq!(tis_buf[tis_len as usize], 0);
+    }
+
+    #[test]
+    fn test_convert_reversible() {
+        let uni = tis2uni_str(&tis_input);
+        let tis = uni2tis_str(&uni);
+
+        assert_eq!(tis_input, tis.as_slice());
+    }
+
+    #[cfg(feature = "cffi")]
+    #[test]
+    fn test_c_convert_reversible_win() {
+        for ch in win_sample {
+            assert_eq!(ch, cffi::th_uni2winthai(cffi::th_winthai2uni(ch)))
+        }
+    }
+
+    #[test]
+    fn test_convert_reversible_win() {
+        for ch in win_sample {
+            assert_eq!(ch, uni2winthai(winthai2uni(ch)))
+        }
+    }
+
+    #[cfg(feature = "cffi")]
+    #[test]
+    fn test_c_convert_reversible_mac() {
+        for ch in mac_sample {
+            assert_eq!(ch, cffi::th_uni2macthai(cffi::th_macthai2uni(ch)))
+        }
+    }
+
+    #[test]
+    fn test_convert_reversible_mac() {
+        for ch in mac_sample {
+            assert_eq!(ch, uni2macthai(macthai2uni(ch)))
+        }
     }
 }

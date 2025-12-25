@@ -47,6 +47,8 @@ pub mod wtt;
 //     pub mod thwbrk;
 // } // mod thwbrk
 pub mod wchar;
+pub use wchar::thwchar_t;
+pub use wchar::uni2rust;
 // pub mod thwctype {
 //     //! Thai wide-char character classifications
 //     pub mod thwctype;

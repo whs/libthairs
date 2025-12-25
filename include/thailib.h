@@ -287,7 +287,7 @@ typedef uint8_t thchar_t;
 /**
  * Thai character type for storing Unicode character
  */
-typedef WideChar thwchar_t;
+typedef wchar_t thwchar_t;
 
 
 
@@ -402,6 +402,9 @@ enum WTTClass TACchtype(thchar_t c);
  */
 enum WTTOp TACio_op(thchar_t c1, thchar_t c2);
 
+/**
+ * Convert character code from TIS-620 to Unicode.
+ */
 thwchar_t th_tis2uni(thchar_t c);
 
 /**
@@ -427,7 +430,7 @@ thchar_t th_uni2tis(thwchar_t wc);
 /**
  * Convert string from Unicode to TIS-620.
  */
-int th_uni2tis_line(const WideChar *source, thchar_t *result, uintptr_t n);
+int th_uni2tis_line(const thwchar_t *source, thchar_t *result, uintptr_t n);
 
 /**
  * Convert character code from Unicode to Thai Windows extended code
