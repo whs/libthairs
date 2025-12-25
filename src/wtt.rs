@@ -22,9 +22,6 @@
 //! It was defined by TACTIS (Thai API Consortium/Thai Industrial Standard) in the NECTEC Thai Software Standard Project (1989-1991),
 //! and later endorsed by Thai Industrial Standard Institute (TISI) as TIS 1566-2541 in 1998.
 
-use ::libc;
-pub type thchar_t = libc::c_uchar;
-
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum WTTClass {
@@ -81,8 +78,8 @@ pub enum WTTOp {
     SR = 5,
 }
 
+use crate::thchar_t;
 use WTTOp::*;
-
 // XXX: These two arrays are exported as extern short in libthai, but unexported in libthairs
 
 #[rustfmt::skip]

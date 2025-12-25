@@ -279,7 +279,19 @@ typedef enum WTTOp {
   SR = 5,
 } WTTOp;
 
+/**
+ * Thai character type for storing TIS-620 character
+ */
 typedef uint8_t thchar_t;
+
+/**
+ * Thai character type for storing Unicode character
+ */
+typedef WideChar thwchar_t;
+
+
+
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -389,6 +401,43 @@ enum WTTClass TACchtype(thchar_t c);
  * WTT I/O operation
  */
 enum WTTOp TACio_op(thchar_t c1, thchar_t c2);
+
+thwchar_t th_tis2uni(thchar_t c);
+
+/**
+ * Convert string from TIS-620 to Unicode
+ */
+int th_tis2uni_line(const thchar_t *source, thwchar_t *result, uintptr_t n);
+
+/**
+ * Convert character code from Thai Windows extended code to Unicode.
+ */
+thwchar_t th_winthai2uni(thchar_t c);
+
+/**
+ * Convert character code from Mac Thai extended code to Unicode
+ */
+thwchar_t th_macthai2uni(thchar_t c);
+
+/**
+ * Convert character code from Unicode to TIS-620
+ */
+thchar_t th_uni2tis(thwchar_t wc);
+
+/**
+ * Convert string from Unicode to TIS-620.
+ */
+int th_uni2tis_line(const WideChar *source, thchar_t *result, uintptr_t n);
+
+/**
+ * Convert character code from Unicode to Thai Windows extended code
+ */
+thchar_t th_uni2winthai(thwchar_t wc);
+
+/**
+ * Convert character code from Unicode to Mac Thai extended code
+ */
+thchar_t th_uni2macthai(thwchar_t wc);
 
 #ifdef __cplusplus
 }  // extern "C"

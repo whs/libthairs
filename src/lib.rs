@@ -25,6 +25,10 @@ pub mod tis;
 //     pub mod thcoll;
 // } // mod thcoll
 pub mod ctype;
+pub use ctype::thchar_t;
+pub use ctype::ThaiCharacter;
+pub use ctype::THCHAR_ERR;
+
 pub mod wtt;
 // pub mod thinp {
 //     //! Thai string input sequence filtering
@@ -42,10 +46,7 @@ pub mod wtt;
 //     //! Thai wide-char word segmentation
 //     pub mod thwbrk;
 // } // mod thwbrk
-// pub mod thwchar {
-//     //! Wide char support for Thai
-//     pub mod thwchar;
-// } // mod thwchar
+pub mod wchar;
 // pub mod thwctype {
 //     //! Thai wide-char character classifications
 //     pub mod thwctype;

@@ -31,7 +31,11 @@
 //! It is usually combined with a consonant, after a dead character is typed, the cursor will not be advanced to the next display cell.
 //! `BV`, `BD`, `TONE`, `AD` and `AV` are classified as dead character.
 
+/// Thai character type for storing TIS-620 character
 pub type thchar_t = u8;
+
+/// Character value indicating error
+pub const THCHAR_ERR: thchar_t = thchar_t::MAX;
 
 pub trait ThaiCharacter {
     /// Is the character a valid TIS-620 code?
