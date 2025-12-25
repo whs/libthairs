@@ -718,6 +718,101 @@ WTTClass TACchtype(thchar_t c);
 
 WTTOp TACio_op(thchar_t c1, thchar_t c2);
 
+/**
+ * Is the character a valid TIS-620 code?
+ */
+bool th_istis(thchar_t c);
+
+/**
+ * Is the character a Thai character?
+ */
+bool th_isthai(thchar_t c);
+
+/**
+ * Is the character an English character?
+ */
+bool th_iseng(thchar_t c);
+
+/**
+ * Is the character a Thai consonant?
+ */
+bool th_isthcons(thchar_t c);
+
+/**
+ * Is the character a Thai vowel?
+ */
+bool th_isthvowel(thchar_t c);
+
+/**
+ * Is the character a Thai tone mark?
+ */
+bool th_isthtone(thchar_t c);
+
+/**
+ * Is the character a Thai diacritic?
+ */
+bool th_isthdiac(thchar_t c);
+
+/**
+ * Is the character a Thai digit?
+ */
+bool th_isthdigit(thchar_t c);
+
+/**
+ * Is the character a Thai punctuation?
+ */
+bool th_isthpunct(thchar_t c);
+
+/**
+ * Is the character a Thai consonant that fits the x-height?
+ */
+bool th_istaillesscons(thchar_t c);
+
+/**
+ * Is the character a Thai consonant with stem above ascender?
+ */
+bool th_isovershootcons(thchar_t c);
+
+/**
+ * Is the character a Thai consonant with stem below baseline?
+ */
+bool th_isundershootcons(thchar_t c);
+
+/**
+ * Is the character a Thai consonant with split part below baseline?
+ */
+bool th_isundersplitcons(thchar_t c);
+
+/**
+ * Is the character a Thai leading vowel?
+ */
+bool th_isldvowel(thchar_t c);
+
+/**
+ * Is the character a Thai following vowel?
+ */
+bool th_isflvowel(thchar_t c);
+
+/**
+ * Is the character a Thai upper vowel?
+ */
+bool th_isupvowel(thchar_t c);
+
+/**
+ * Is the character a Thai below vowel?
+ */
+bool th_isblvowel(thchar_t c);
+
+/**
+ * Position for rendering
+ */
+int th_chlevel(thchar_t c);
+
+/**
+ * Is the character a combining character?
+ */
+bool th_iscombchar(thchar_t c);
+
 extern char *strcpy(char*, const char*);
 
 int th_isaccept(thchar_t c1, thchar_t c2, thstrict_t s);

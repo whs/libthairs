@@ -1,3 +1,5 @@
+//! Thai word segmentation
+
 mod common;
 mod ctype;
 mod maximal;

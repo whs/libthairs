@@ -16,6 +16,8 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ////////////////////////////////////////////////////////////////////////////////
 
+//! Thai character constants from TIS-620
+
 pub const TIS_KO_KAI: u8 = 0xa1;
 pub const TIS_KHO_KHAI: u8 = 0xa2;
 pub const TIS_KHO_KHUAT: u8 = 0xa3;
@@ -105,4 +107,5 @@ pub const TIS_ANGKHANKHU: u8 = 0xfa;
 pub const TIS_KHOMUT: u8 = 0xfb;
 
 // For backward compatibility with libthai 0.1.28 and below
+#[deprecated(note = "Use TIS_SYMBOL_BAHT")]
 pub const TIS_YMBOL_BAHT: u8 = 0xdf;

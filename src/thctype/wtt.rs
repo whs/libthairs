@@ -1,3 +1,5 @@
+//! WTT I/O implementation.
+
 use ::libc;
 pub type thchar_t = libc::c_uchar;
 pub type WTTClass = libc::c_uint;

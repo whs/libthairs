@@ -1,104 +1,156 @@
+//! Thai character classifications
+//!
+//! The Thai Standard Industrial Standards Institute (TIS) defined the Thai character set for using with computer named TIS-620.
+//! This character set is 8-bit encoded including both English and Thai characters.
+//! Aliases of TIS-620 are TIS620, TIS620-0, TIS620.2529-1, TIS620.2533-0 and ISO-IR-166.
+//!
+//! Thai characters consist of 44 consonants, vowels, tonemarks, diacritics and Thai digits.
+//! Thai vowels are divided into 4 groups, Leading Vowels (LV), Following Vowels (FV), Below Vowels (BV) and Above Vowels (AV).
+//! There are 4 tonemarks whose position is above a consonant.
+//! Diacritics are divided into 2 groups, Above Diacritics (AD) and Below Diacritics (BD).
+//!
+//! Libthai has defined 4 levels for the position of a character:
+//!
+//! - Below level: a character is placed below the consonant.
+//!   [`chlevel()`] will return the value -1 for these characters.
+//! - Base level: this includes consonants, FV and LV. A character is placed on baseline.
+//!   [`chlevel()`] will return the value 0 for these characters.
+//! - Above level: a character is placed just above the consonant.
+//!   [`chlevel()`] will return the value 1 for these characters.
+//! - Top level: this includes tone marks and diacritics. For plain character cell rendering, it is safe to put these characters at top-most level.
+//!   However, some rendering engines may lower them down on absence of character at Above level, for typographical quality.
+//!   [`chlevel()`] will return the value 2 for these characters.
+//!
+//! There is an extra level value 3 for certain characters which are usually classified as characters at Above level, but are also allowed to be placed at Top level for some rare cases.
+//! Two characters fall in this category, namely `MAITAIKHU` and `NIKHAHIT`.
+//!
+//! `MAITAIKHU` can be placed at Top level when writing some minority languages such as Kuy, to shorten some syllables with compound vowels, such as Sara Ia and Sara Uea.
+//! `NIKHAHIT` can be placed at Top level in Pali/Sanskrit words, to represent -ng final sound above SARA I.
+//!
+//! A character placed at below, above or top level is also called dead character.
+//! It is usually combined with a consonant, after a dead character is typed, the cursor will not be advanced to the next display cell.
+//! `BV`, `BD`, `TONE`, `AD` and `AV` are classified as dead character.
+
 mod wtt;
 
 pub type thchar_t = u8;
 
 pub trait ThaiCharacter {
+    /// Is the character a valid TIS-620 code?
     fn is_tis(&self) -> bool;
+    /// Is the character a Thai character?
     fn is_thai(&self) -> bool;
+    /// Is the character an English character?
     fn is_eng(&self) -> bool;
-    fn is_thcons(&self) -> bool;
-    fn is_thvowel(&self) -> bool;
-    fn is_thtone(&self) -> bool;
-    fn is_thdiac(&self) -> bool;
-    fn is_thdigit(&self) -> bool;
-    fn is_thpunct(&self) -> bool;
-    fn is_taillesscons(&self) -> bool;
-    fn is_overshootcons(&self) -> bool;
-    fn is_undershootcons(&self) -> bool;
-    fn is_undersplitcons(&self) -> bool;
-    fn is_ldvowel(&self) -> bool;
-    fn is_flvowel(&self) -> bool;
-    fn is_upvowel(&self) -> bool;
-    fn is_blvowel(&self) -> bool;
+    /// Is the character a Thai consonant?
+    fn is_th_cons(&self) -> bool;
+    /// Is the character a Thai vowel?
+    fn is_th_vowel(&self) -> bool;
+    /// Is the character a Thai tone mark?
+    fn is_th_tone(&self) -> bool;
+    /// Is the character a Thai diacritic?
+    fn is_th_diac(&self) -> bool;
+    /// Is the character a Thai digit?
+    fn is_th_digit(&self) -> bool;
+    /// Is the character a Thai punctuation?
+    fn is_th_punct(&self) -> bool;
+    /// Is the character a Thai consonant that fits the x-height?
+    fn is_tailless_cons(&self) -> bool;
+    /// Is the character a Thai consonant with stem above ascender?
+    fn is_overshoot_cons(&self) -> bool;
+    /// Is the character a Thai consonant with stem below baseline?
+    fn is_undershoot_cons(&self) -> bool;
+    /// Is the character a Thai consonant with split part below baseline?
+    fn is_undersplit_cons(&self) -> bool;
+    /// Is the character a Thai leading vowel?
+    fn is_leading_vowel(&self) -> bool;
+    /// Is the character a Thai following vowel?
+    fn is_following_vowel(&self) -> bool;
+    /// Is the character a Thai upper vowel?
+    fn is_upper_vowel(&self) -> bool;
+    /// Is the character a Thai below vowel?
+    fn is_below_vowel(&self) -> bool;
+    /// Position for rendering:.
     fn chlevel(&self) -> i8;
-    fn is_combchar(&self) -> bool;
+    /// Is the character a combining character?
+    fn is_combining_char(&self) -> bool;
 }
 
 impl ThaiCharacter for thchar_t {
     fn is_tis(&self) -> bool {
-        th_istis(*self)
+        is_tis(*self)
     }
 
     fn is_thai(&self) -> bool {
-        th_isthai(*self)
+        is_thai(*self)
     }
 
     fn is_eng(&self) -> bool {
-        th_iseng(*self)
+        is_eng(*self)
     }
 
-    fn is_thcons(&self) -> bool {
-        th_isthcons(*self)
+    fn is_th_cons(&self) -> bool {
+        is_th_cons(*self)
     }
 
-    fn is_thvowel(&self) -> bool {
-        th_isthvowel(*self)
+    fn is_th_vowel(&self) -> bool {
+        is_th_vowel(*self)
     }
 
-    fn is_thtone(&self) -> bool {
-        th_isthtone(*self)
+    fn is_th_tone(&self) -> bool {
+        is_th_tone(*self)
     }
 
-    fn is_thdiac(&self) -> bool {
-        th_isthdiac(*self)
+    fn is_th_diac(&self) -> bool {
+        is_th_diac(*self)
     }
 
-    fn is_thdigit(&self) -> bool {
-        th_isthdigit(*self)
+    fn is_th_digit(&self) -> bool {
+        is_th_digit(*self)
     }
 
-    fn is_thpunct(&self) -> bool {
-        th_isthpunct(*self)
+    fn is_th_punct(&self) -> bool {
+        is_th_punct(*self)
     }
 
-    fn is_taillesscons(&self) -> bool {
-        th_istaillesscons(*self)
+    fn is_tailless_cons(&self) -> bool {
+        is_tailless_cons(*self)
     }
 
-    fn is_overshootcons(&self) -> bool {
-        th_isovershootcons(*self)
+    fn is_overshoot_cons(&self) -> bool {
+        is_overshoot_cons(*self)
     }
 
-    fn is_undershootcons(&self) -> bool {
-        th_isundershootcons(*self)
+    fn is_undershoot_cons(&self) -> bool {
+        is_undershoot_cons(*self)
     }
 
-    fn is_undersplitcons(&self) -> bool {
-        th_isundersplitcons(*self)
+    fn is_undersplit_cons(&self) -> bool {
+        is_undersplit_cons(*self)
     }
 
-    fn is_ldvowel(&self) -> bool {
-        th_isldvowel(*self)
+    fn is_leading_vowel(&self) -> bool {
+        is_leading_vowel(*self)
     }
 
-    fn is_flvowel(&self) -> bool {
-        th_isflvowel(*self)
+    fn is_following_vowel(&self) -> bool {
+        is_following_vowel(*self)
     }
 
-    fn is_upvowel(&self) -> bool {
-        th_isupvowel(*self)
+    fn is_upper_vowel(&self) -> bool {
+        is_upper_vowel(*self)
     }
 
-    fn is_blvowel(&self) -> bool {
-        th_isblvowel(*self)
+    fn is_below_vowel(&self) -> bool {
+        is_below_vowel(*self)
     }
 
     fn chlevel(&self) -> i8 {
-        th_chlevel(*self)
+        chlevel(*self)
     }
 
-    fn is_combchar(&self) -> bool {
-        th_iscombchar(*self)
+    fn is_combining_char(&self) -> bool {
+        is_combining_char(*self)
     }
 }
 
@@ -493,83 +545,221 @@ const fn isbits(c: thchar_t, mask: u16, val: u16) -> bool {
     _th_ctype_tbl[c as usize] & mask == val
 }
 
-pub const fn th_istis(c: thchar_t) -> bool {
+/// Is the character a valid TIS-620 code?
+pub const fn is_tis(c: thchar_t) -> bool {
     isctype(c, _th_IStis)
 }
 
-pub const fn th_isthai(c: thchar_t) -> bool {
-    th_istis(c) && (c & 0x80) != 0
+/// Is the character a Thai character?
+pub const fn is_thai(c: thchar_t) -> bool {
+    is_tis(c) && (c & 0x80) != 0
 }
 
-pub const fn th_iseng(c: thchar_t) -> bool {
+/// Is the character an English character?
+pub const fn is_eng(c: thchar_t) -> bool {
     c & 0x80 == 0
 }
 
 // Thai letter classification
 
-pub const fn th_isthcons(c: thchar_t) -> bool {
+/// Is the character a Thai consonant?
+pub const fn is_th_cons(c: thchar_t) -> bool {
     isctype(c, _th_IScons)
 }
 
-pub const fn th_isthvowel(c: thchar_t) -> bool {
+/// Is the character a Thai vowel?
+pub const fn is_th_vowel(c: thchar_t) -> bool {
     isctype(c, _th_ISvowel)
 }
 
-pub const fn th_isthtone(c: thchar_t) -> bool {
+/// Is the character a Thai tone mark?
+pub const fn is_th_tone(c: thchar_t) -> bool {
     isctype(c, _th_IStone)
 }
 
-pub const fn th_isthdiac(c: thchar_t) -> bool {
+/// Is the character a Thai diacritic?
+pub const fn is_th_diac(c: thchar_t) -> bool {
     isctype(c, _th_ISdiac)
 }
 
-pub const fn th_isthdigit(c: thchar_t) -> bool {
+/// Is the character a Thai digit?
+pub const fn is_th_digit(c: thchar_t) -> bool {
     isctype(c, _th_ISdigit)
 }
 
-pub const fn th_isthpunct(c: thchar_t) -> bool {
+/// Is the character a Thai punctuation?
+pub const fn is_th_punct(c: thchar_t) -> bool {
     isctype(c, _th_ISpunct)
 }
 
-//Thai consonant shapes classification
+// Thai consonant shapes classification
 
-pub const fn th_istaillesscons(c: thchar_t) -> bool {
+/// Is the character a Thai consonant that fits the x-height?
+pub const fn is_tailless_cons(c: thchar_t) -> bool {
     isbits(c, _th_CClassMsk, _th_CCtailless)
 }
 
-pub const fn th_isovershootcons(c: thchar_t) -> bool {
+/// Is the character a Thai consonant with stem above ascender?
+pub const fn is_overshoot_cons(c: thchar_t) -> bool {
     isbits(c, _th_CClassMsk, _th_CCovershoot)
 }
 
-pub const fn th_isundershootcons(c: thchar_t) -> bool {
+/// Is the character a Thai consonant with stem below baseline?
+pub const fn is_undershoot_cons(c: thchar_t) -> bool {
     isbits(c, _th_CClassMsk, _th_CCundershoot)
 }
 
-pub const fn th_isundersplitcons(c: thchar_t) -> bool {
+/// Is the character a Thai consonant with split part below baseline?
+pub const fn is_undersplit_cons(c: thchar_t) -> bool {
     isbits(c, _th_CClassMsk, _th_CCundersplit)
 }
 
 // Thai vowel classification
 
-pub const fn th_isldvowel(c: thchar_t) -> bool {
+/// Is the character a Thai leading vowel?
+pub const fn is_leading_vowel(c: thchar_t) -> bool {
     isbits(c, _th_VClassMsk, _th_VCldvowel)
 }
 
-pub const fn th_isflvowel(c: thchar_t) -> bool {
+/// Is the character a Thai following vowel?
+pub const fn is_following_vowel(c: thchar_t) -> bool {
     isbits(c, _th_VClassMsk, _th_VCflvowel)
 }
 
-pub const fn th_isupvowel(c: thchar_t) -> bool {
+/// Is the character a Thai upper vowel?
+pub const fn is_upper_vowel(c: thchar_t) -> bool {
     isbits(c, _th_VClassMsk, _th_VCupvowel)
 }
-pub const fn th_isblvowel(c: thchar_t) -> bool {
+/// Is the character a Thai below vowel?
+pub const fn is_below_vowel(c: thchar_t) -> bool {
     isbits(c, _th_VClassMsk, _th_VCblvowel)
 }
 
-pub const fn th_chlevel(c: thchar_t) -> i8 {
+/// Position for rendering
+pub const fn chlevel(c: thchar_t) -> i8 {
     _th_chlevel_tbl[c as usize]
 }
 
-pub const fn th_iscombchar(c: thchar_t) -> bool {
-    th_chlevel(c) != 0
+/// Is the character a combining character?
+pub const fn is_combining_char(c: thchar_t) -> bool {
+    chlevel(c) != 0
+}
+
+#[cfg(feature = "cffi")]
+mod cffi {
+    use super::*;
+
+    /// Is the character a valid TIS-620 code?
+    #[no_mangle]
+    pub extern "C" fn th_istis(c: thchar_t) -> bool {
+        is_tis(c)
+    }
+
+    /// Is the character a Thai character?
+    #[no_mangle]
+    pub extern "C" fn th_isthai(c: thchar_t) -> bool {
+        is_thai(c)
+    }
+
+    /// Is the character an English character?
+    #[no_mangle]
+    pub extern "C" fn th_iseng(c: thchar_t) -> bool {
+        is_eng(c)
+    }
+
+    /// Is the character a Thai consonant?
+    #[no_mangle]
+    pub extern "C" fn th_isthcons(c: thchar_t) -> bool {
+        is_th_cons(c)
+    }
+
+    /// Is the character a Thai vowel?
+    #[no_mangle]
+    pub extern "C" fn th_isthvowel(c: thchar_t) -> bool {
+        is_th_vowel(c)
+    }
+
+    /// Is the character a Thai tone mark?
+    #[no_mangle]
+    pub extern "C" fn th_isthtone(c: thchar_t) -> bool {
+        is_th_tone(c)
+    }
+
+    /// Is the character a Thai diacritic?
+    #[no_mangle]
+    pub extern "C" fn th_isthdiac(c: thchar_t) -> bool {
+        is_th_diac(c)
+    }
+
+    /// Is the character a Thai digit?
+    #[no_mangle]
+    pub extern "C" fn th_isthdigit(c: thchar_t) -> bool {
+        is_th_digit(c)
+    }
+
+    /// Is the character a Thai punctuation?
+    #[no_mangle]
+    pub extern "C" fn th_isthpunct(c: thchar_t) -> bool {
+        is_th_punct(c)
+    }
+
+    /// Is the character a Thai consonant that fits the x-height?
+    #[no_mangle]
+    pub extern "C" fn th_istaillesscons(c: thchar_t) -> bool {
+        is_tailless_cons(c)
+    }
+
+    /// Is the character a Thai consonant with stem above ascender?
+    #[no_mangle]
+    pub extern "C" fn th_isovershootcons(c: thchar_t) -> bool {
+        is_overshoot_cons(c)
+    }
+
+    /// Is the character a Thai consonant with stem below baseline?
+    #[no_mangle]
+    pub extern "C" fn th_isundershootcons(c: thchar_t) -> bool {
+        is_undershoot_cons(c)
+    }
+
+    /// Is the character a Thai consonant with split part below baseline?
+    #[no_mangle]
+    pub extern "C" fn th_isundersplitcons(c: thchar_t) -> bool {
+        is_undersplit_cons(c)
+    }
+
+    /// Is the character a Thai leading vowel?
+    #[no_mangle]
+    pub extern "C" fn th_isldvowel(c: thchar_t) -> bool {
+        is_leading_vowel(c)
+    }
+
+    /// Is the character a Thai following vowel?
+    #[no_mangle]
+    pub extern "C" fn th_isflvowel(c: thchar_t) -> bool {
+        is_following_vowel(c)
+    }
+
+    /// Is the character a Thai upper vowel?
+    #[no_mangle]
+    pub extern "C" fn th_isupvowel(c: thchar_t) -> bool {
+        is_upper_vowel(c)
+    }
+
+    /// Is the character a Thai below vowel?
+    #[no_mangle]
+    pub extern "C" fn th_isblvowel(c: thchar_t) -> bool {
+        is_below_vowel(c)
+    }
+
+    /// Position for rendering
+    #[no_mangle]
+    pub extern "C" fn th_chlevel(c: thchar_t) -> libc::c_int {
+        chlevel(c) as libc::c_int
+    }
+
+    /// Is the character a combining character?
+    #[no_mangle]
+    pub extern "C" fn th_iscombchar(c: thchar_t) -> bool {
+        is_combining_char(c)
+    }
 }

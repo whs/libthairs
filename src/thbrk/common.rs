@@ -30,7 +30,7 @@ pub(super) fn brk_brkpos_hints(str: &[thchar_t]) -> Vec<bool> {
 
     while i < str.len() {
         match str[i] {
-            v if v.is_thcons() => {
+            v if v.is_th_cons() => {
                 if str.get(i + 1) == Some(&TIS_THANTHAKHAT) {
                     i += 2; /* the cons + THANTHAKHAT */
                 } else if str.get(i + 2) == Some(&TIS_THANTHAKHAT) {
@@ -44,7 +44,7 @@ pub(super) fn brk_brkpos_hints(str: &[thchar_t]) -> Vec<bool> {
                     i += 4; /* the cons + MAITAIKHU + OANG/WOWAEN + cons */
                 } else if (i > 0 && (str[i - 1] == TIS_MAI_HAN_AKAT || str[i - 1] == TIS_SARA_UEE))
                     || (i > 1
-                        && str[i - 1].is_thtone()
+                        && str[i - 1].is_th_tone()
                         && (str[i - 2] == TIS_MAI_HAN_AKAT || str[i - 2] == TIS_SARA_UEE))
                 {
                     i += 1;
@@ -62,9 +62,9 @@ pub(super) fn brk_brkpos_hints(str: &[thchar_t]) -> Vec<bool> {
 
                 if str[i] == TIS_MAITAIKHU {
                     i += 2; /* MAITAIKHU + the supposedly cons */
-                } else if str[i].is_upvowel() {
+                } else if str[i].is_upper_vowel() {
                     i += 1; /* the upper vowel, as part of composite vowel */
-                    if i < str.len() && str[i].is_thtone() {
+                    if i < str.len() && str[i].is_th_tone() {
                         i += 1;
                     }
                     i += 1; /* the supposedly cons */
@@ -80,7 +80,7 @@ pub(super) fn brk_brkpos_hints(str: &[thchar_t]) -> Vec<bool> {
                              */
                 }
             }
-            v if v.is_ldvowel() => {
+            v if v.is_leading_vowel() => {
                 hints[i] = true; /* the ldvowel */
                 i += 2; /* the ldvowel + the supposedly cons */
             }
