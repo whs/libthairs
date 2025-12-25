@@ -442,6 +442,96 @@ thchar_t th_uni2winthai(thwchar_t wc);
  */
 thchar_t th_uni2macthai(thwchar_t wc);
 
+/**
+ * Is the wide character convertible to a valid TIS-620 code?
+ */
+bool th_wcistis(thwchar_t wc);
+
+/**
+ * Is the wide character a Thai character?
+ */
+bool th_wcisthai(thwchar_t wc);
+
+/**
+ * Is the wide character an English character?
+ */
+bool th_wciseng(thwchar_t wc);
+
+/**
+ * Is the wide character a Thai consonant?
+ */
+bool th_wcisthcons(thwchar_t wc);
+
+/**
+ * Is the wide character a Thai vowel?
+ */
+bool th_wcisthvowel(thwchar_t wc);
+
+/**
+ * Is the wide character a Thai tone mark?
+ */
+bool th_wcisthtone(thwchar_t wc);
+
+/**
+ * Is the wide character a Thai diacritic?
+ */
+bool th_wcisthdiac(thwchar_t wc);
+
+/**
+ * Is the character a Thai digit?
+ */
+bool th_wcisthdigit(thwchar_t wc);
+
+/**
+ * Is the character a Thai punctuation?
+ */
+bool th_wcisthpunct(thwchar_t wc);
+
+/**
+ * Is the wide character a Thai consonant that fits the x-height?
+ */
+bool th_wcistaillesscons(thwchar_t wc);
+
+/**
+ * Is the wide character a Thai consonant with stem above ascender?
+ */
+bool th_wcisovershootcons(thwchar_t wc);
+
+/**
+ * Is the wide character a Thai consonant with stem below baseline?
+ */
+bool th_wcisundershootcons(thwchar_t wc);
+
+/**
+ * Is the wide character a Thai consonant with split part below baseline?
+ */
+bool th_wcisundersplitcons(thwchar_t wc);
+
+/**
+ * Is the wide character a Thai leading vowel?
+ */
+bool th_wcisldvowel(thwchar_t wc);
+
+/**
+ * Is the wide character a Thai following vowel?
+ */
+bool th_wcisflvowel(thwchar_t wc);
+
+/**
+ * Is the wide character a Thai upper vowel?
+ */
+bool th_wcisupvowel(thwchar_t wc);
+
+/**
+ * Is the wide character a Thai below vowel?
+ */
+bool th_wcisblvowel(thwchar_t wc);
+
+/**
+ * Position for rendering
+ */
+int th_wcchlevel(thwchar_t wc);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus
