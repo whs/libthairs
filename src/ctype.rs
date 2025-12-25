@@ -31,8 +31,6 @@
 //! It is usually combined with a consonant, after a dead character is typed, the cursor will not be advanced to the next display cell.
 //! `BV`, `BD`, `TONE`, `AD` and `AV` are classified as dead character.
 
-mod wtt;
-
 pub type thchar_t = u8;
 
 pub trait ThaiCharacter {

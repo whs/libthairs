@@ -14,7 +14,7 @@
 extern crate libc;
 
 // pub mod thbrk;
-// pub mod tis;
+pub mod tis;
 // pub mod thcell {
 //     //! Thai string cell custering
 //     pub mod thcell;
@@ -24,7 +24,8 @@ extern crate libc;
 //     pub mod cweight;
 //     pub mod thcoll;
 // } // mod thcoll
-pub mod thctype;
+pub mod ctype;
+pub mod wtt;
 // pub mod thinp {
 //     //! Thai string input sequence filtering
 //     pub mod thinp;
