@@ -763,3 +763,285 @@ mod cffi {
         is_combining_char(c)
     }
 }
+
+mod tests {
+    use super::*;
+    use std::ops::RangeInclusive;
+
+    fn test_bool_funcs(ranges: &Vec<RangeInclusive<thchar_t>>, func: fn(ch: thchar_t) -> bool) {
+        // ranges must be sorted and non-overlapping
+        let mut c: thchar_t = 0;
+        for range in ranges {
+            // [start ... rangestart]
+            while c < *range.start() {
+                assert_eq!(func(c), false, "0x{:02x}", c);
+                c += 1;
+            }
+            // [rangestart ... rangeend]
+            while c <= *range.end() {
+                assert_eq!(func(c), true, "0x{:02x}", c);
+                c += 1;
+            }
+        }
+        // [rangeend ... 0xFF]
+        while c < 0xff {
+            assert_eq!(func(c), false, "0x{:02x}", c);
+            c += 1;
+        }
+        assert_eq!(func(0xff), false, "0xff");
+    }
+
+    #[test]
+    fn test_is_tis() {
+        test_bool_funcs(&vec![0x00..=0x7f, 0xa1..=0xda, 0xdf..=0xfb], is_tis);
+    }
+
+    #[test]
+    fn test_is_tis_trait() {
+        test_bool_funcs(&vec![0x00..=0x7f, 0xa1..=0xda, 0xdf..=0xfb], |c| c.is_tis());
+    }
+
+    #[test]
+    fn test_is_thai() {
+        test_bool_funcs(&vec![0xa1..=0xda, 0xdf..=0xfb], is_thai);
+    }
+
+    #[test]
+    fn test_is_thai_trait() {
+        test_bool_funcs(&vec![0xa1..=0xda, 0xdf..=0xfb], |c| c.is_thai());
+    }
+
+    #[test]
+    fn test_is_eng() {
+        test_bool_funcs(&vec![0x00..=0x7f], is_eng);
+    }
+
+    #[test]
+    fn test_is_eng_trait() {
+        test_bool_funcs(&vec![0x00..=0x7f], |c| c.is_eng());
+    }
+
+    #[test]
+    fn test_is_th_cons() {
+        test_bool_funcs(&vec![0xa1..=0xc3, 0xc5..=0xc5, 0xc7..=0xce], is_th_cons);
+    }
+
+    #[test]
+    fn test_is_th_cons_trait() {
+        test_bool_funcs(&vec![0xa1..=0xc3, 0xc5..=0xc5, 0xc7..=0xce], |c| {
+            c.is_th_cons()
+        });
+    }
+
+    #[test]
+    fn test_is_th_vowel() {
+        test_bool_funcs(
+            &vec![0xc4..=0xc4, 0xc6..=0xc6, 0xd0..=0xd9, 0xe0..=0xe5],
+            is_th_vowel,
+        );
+    }
+
+    #[test]
+    fn test_is_th_vowel_trait() {
+        test_bool_funcs(
+            &vec![0xc4..=0xc4, 0xc6..=0xc6, 0xd0..=0xd9, 0xe0..=0xe5],
+            |c| c.is_th_vowel(),
+        );
+    }
+
+    #[test]
+    fn test_is_th_tone() {
+        test_bool_funcs(&vec![0xe8..=0xeb], is_th_tone);
+    }
+
+    #[test]
+    fn test_is_th_tone_trait() {
+        test_bool_funcs(&vec![0xe8..=0xeb], |c| c.is_th_tone());
+    }
+
+    #[test]
+    fn test_is_th_diac() {
+        test_bool_funcs(&vec![0xda..=0xda, 0xe7..=0xe7, 0xec..=0xee], is_th_diac);
+    }
+
+    #[test]
+    fn test_is_th_diac_trait() {
+        test_bool_funcs(&vec![0xda..=0xda, 0xe7..=0xe7, 0xec..=0xee], |c| {
+            c.is_th_diac()
+        });
+    }
+
+    #[test]
+    fn test_is_th_digit() {
+        test_bool_funcs(&vec![0x30..=0x39, 0xf0..=0xf9], is_th_digit);
+    }
+
+    #[test]
+    fn test_is_th_digit_trait() {
+        test_bool_funcs(&vec![0x30..=0x39, 0xf0..=0xf9], |c| c.is_th_digit());
+    }
+
+    #[test]
+    fn test_is_th_punct() {
+        test_bool_funcs(
+            &vec![
+                0x21..=0x2f,
+                0x3a..=0x40,
+                0x5b..=0x60,
+                0x7b..=0x7e,
+                0xcf..=0xcf,
+                0xdf..=0xdf,
+                0xe6..=0xe6,
+                0xef..=0xef,
+                0xfa..=0xfb,
+            ],
+            is_th_punct,
+        );
+    }
+
+    #[test]
+    fn test_is_th_punct_trait() {
+        test_bool_funcs(
+            &vec![
+                0x21..=0x2f,
+                0x3a..=0x40,
+                0x5b..=0x60,
+                0x7b..=0x7e,
+                0xcf..=0xcf,
+                0xdf..=0xdf,
+                0xe6..=0xe6,
+                0xef..=0xef,
+                0xfa..=0xfb,
+            ],
+            |c| c.is_th_punct(),
+        );
+    }
+
+    #[test]
+    fn test_is_tailless_cons() {
+        test_bool_funcs(
+            &vec![
+                0xa1..=0xac,
+                0xb1..=0xba,
+                0xbc..=0xbc,
+                0xbe..=0xbe,
+                0xc0..=0xc3,
+                0xc5..=0xc5,
+                0xc7..=0xcb,
+                0xcd..=0xce,
+            ],
+            is_tailless_cons,
+        );
+    }
+
+    #[test]
+    fn test_is_tailless_cons_trait() {
+        test_bool_funcs(
+            &vec![
+                0xa1..=0xac,
+                0xb1..=0xba,
+                0xbc..=0xbc,
+                0xbe..=0xbe,
+                0xc0..=0xc3,
+                0xc5..=0xc5,
+                0xc7..=0xcb,
+                0xcd..=0xce,
+            ],
+            |c| c.is_tailless_cons(),
+        );
+    }
+
+    #[test]
+    fn test_is_overshoot_cons() {
+        test_bool_funcs(
+            &vec![0xbb..=0xbb, 0xbd..=0xbd, 0xbf..=0xbf, 0xcc..=0xcc],
+            is_overshoot_cons,
+        );
+    }
+
+    #[test]
+    fn test_is_overshoot_cons_trait() {
+        test_bool_funcs(
+            &vec![0xbb..=0xbb, 0xbd..=0xbd, 0xbf..=0xbf, 0xcc..=0xcc],
+            |c| c.is_overshoot_cons(),
+        );
+    }
+
+    #[test]
+    fn test_is_undershoot_cons() {
+        test_bool_funcs(&vec![0xae..=0xaf], is_undershoot_cons);
+    }
+
+    #[test]
+    fn test_is_undershoot_cons_trait() {
+        test_bool_funcs(&vec![0xae..=0xaf], |c| c.is_undershoot_cons());
+    }
+
+    #[test]
+    fn test_is_undersplit_cons() {
+        test_bool_funcs(&vec![0xad..=0xad, 0xb0..=0xb0], is_undersplit_cons);
+    }
+
+    #[test]
+    fn test_is_undersplit_cons_trait() {
+        test_bool_funcs(&vec![0xad..=0xad, 0xb0..=0xb0], |c| c.is_undersplit_cons());
+    }
+
+    #[test]
+    fn test_is_leading_vowel() {
+        test_bool_funcs(&vec![0xe0..=0xe4], is_leading_vowel);
+    }
+
+    #[test]
+    fn test_is_leading_vowel_trait() {
+        test_bool_funcs(&vec![0xe0..=0xe4], |c| c.is_leading_vowel());
+    }
+
+    #[test]
+    fn test_is_following_vowel() {
+        test_bool_funcs(
+            &vec![
+                0xc4..=0xc4,
+                0xc6..=0xc6,
+                0xd0..=0xd0,
+                0xd2..=0xd3,
+                0xe5..=0xe5,
+            ],
+            is_following_vowel,
+        );
+    }
+
+    #[test]
+    fn test_is_following_vowel_trait() {
+        test_bool_funcs(
+            &vec![
+                0xc4..=0xc4,
+                0xc6..=0xc6,
+                0xd0..=0xd0,
+                0xd2..=0xd3,
+                0xe5..=0xe5,
+            ],
+            |c| c.is_following_vowel(),
+        );
+    }
+
+    #[test]
+    fn test_is_upper_vowel() {
+        test_bool_funcs(&vec![0xd1..=0xd1, 0xd4..=0xd7], is_upper_vowel);
+    }
+
+    #[test]
+    fn test_is_upper_vowel_trait() {
+        test_bool_funcs(&vec![0xd1..=0xd1, 0xd4..=0xd7], |c| c.is_upper_vowel());
+    }
+
+    #[test]
+    fn test_is_below_vowel() {
+        test_bool_funcs(&vec![0xd8..=0xd9], is_below_vowel);
+    }
+
+    #[test]
+    fn test_is_below_vowel_trait() {
+        test_bool_funcs(&vec![0xd8..=0xd9], |c| c.is_below_vowel());
+    }
+}
