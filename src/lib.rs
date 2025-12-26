@@ -14,7 +14,7 @@
 extern crate core;
 extern crate libc;
 
-// pub mod thbrk;
+pub mod thbrk;
 pub mod tis;
 // pub mod thcell {
 //     //! Thai string cell custering

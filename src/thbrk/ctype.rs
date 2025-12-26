@@ -1,4 +1,4 @@
-use crate::thctype::thchar_t;
+use crate::thchar_t;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(super) enum BrkClass {

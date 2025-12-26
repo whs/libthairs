@@ -1,8 +1,8 @@
-use crate::thctype::{thchar_t, ThaiCharacter};
 use crate::tis::{
     TIS_KO_KAI, TIS_LU, TIS_MAITAIKHU, TIS_MAI_HAN_AKAT, TIS_O_ANG, TIS_RU, TIS_SARA_A,
     TIS_SARA_AA, TIS_SARA_AE, TIS_SARA_E, TIS_SARA_UEE, TIS_THANTHAKHAT, TIS_WO_WAEN,
 };
+use crate::{thchar_t, ThaiCharacter};
 use datrie::{CTrieData, ROTrie, TrieState};
 use std::path::Path;
 use std::{env, io};

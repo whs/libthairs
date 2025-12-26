@@ -6,6 +6,8 @@ fn cbindgen_generate() {
     let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
 
     println!("cargo::rustc-cdylib-link-arg=-fuse-ld=lld");
+    // TODO: Remove this once we use Rust datrie
+    println!("cargo::rustc-link-lib=datrie");
     // println!(
     //     "cargo::rustc-cdylib-link-arg=-Wl,--version-script={}/libdatrie.map",
     //     crate_dir

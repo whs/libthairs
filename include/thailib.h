@@ -279,10 +279,16 @@ typedef enum WTTOp {
   SR = 5,
 } WTTOp;
 
+typedef struct ThBrk ThBrk;
+
 /**
  * Thai character type for storing TIS-620 character
  */
 typedef uint8_t thchar_t;
+
+typedef uint32_t Bool;
+
+typedef TrieState_Option_CTrieData LegacyTrieState;
 
 /**
  * Thai character type for storing Unicode character
@@ -296,6 +302,55 @@ typedef wchar_t thwchar_t;
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
+
+extern char *strcpy(char*, const char*);
+
+extern size_t strlen(const char*);
+
+extern void *malloc(size_t);
+
+extern void free(void*);
+
+struct ThBrk *th_brk_new(const char *dictpath);
+
+void th_brk_delete(struct ThBrk *brk);
+
+int th_brk_insert_breaks(struct ThBrk *brk,
+                         const thchar_t *in_0,
+                         thchar_t *out,
+                         size_t out_sz,
+                         const char *delim);
+
+int32_t th_brk_find_breaks(const struct ThBrk *brk,
+                           const thchar_t *s,
+                           int32_t *pos,
+                           uintptr_t pos_sz);
+
+int th_brk_line(const thchar_t *in_0, thchar_t *out, size_t out_sz, const char *delim);
+
+int32_t th_brk(const thchar_t *s, int32_t *pos, uintptr_t pos_sz);
+
+extern void *memcpy(void*, const void*, unsigned long);
+
+extern void *malloc(unsigned long);
+
+extern void *realloc(void*, unsigned long);
+
+extern void free(void*);
+
+extern Bool trie_state_is_single(const LegacyTrieState *s);
+
+extern Bool trie_state_is_walkable(const LegacyTrieState *s, AlphaChar c);
+
+extern Bool trie_state_walk(LegacyTrieState *s, AlphaChar c);
+
+extern void trie_state_copy(LegacyTrieState *dst, const LegacyTrieState *src);
+
+extern LegacyTrieState *trie_state_clone(const LegacyTrieState *s);
+
+extern void trie_state_free(LegacyTrieState *s);
+
+extern void trie_state_rewind(LegacyTrieState *s);
 
 /**
  * Is the character a valid TIS-620 code?

@@ -1,8 +1,8 @@
 use crate::thbrk::common::brk_brkpos_hints;
 use crate::thbrk::ThBrk;
-use crate::thctype::thchar_t;
-use crate::thwchar::thwchar::th_tis2uni_line_rs;
-use crate::thwctype::thwctype::thwchar_t;
+use crate::thchar_t;
+use crate::thwchar_t;
+use crate::wchar::tis2uni_str;
 use ::libc;
 use datrie::AlphaChar;
 use std::ptr::NonNull;
@@ -140,7 +140,7 @@ pub(super) fn brk_maximal_do(
     // let pos = unsafe { slice::from_raw_parts_mut(pos, n as usize) };
     let brkpos_hints = brk_brkpos_hints(s);
 
-    let mut ws = th_tis2uni_line_rs(s);
+    let mut ws = tis2uni_str(s);
     ws.push(0);
 
     unsafe {

@@ -7,7 +7,7 @@ mod maximal;
 use crate::thbrk::common::{brk_load_default_dict, ThTrie};
 use crate::thbrk::ctype::{brk_class, brk_op, BrkClass, BrkOp};
 use crate::thbrk::maximal::{brk_maximal_do, BrkEnv};
-use crate::thctype::thchar_t;
+use crate::thchar_t;
 use ::libc;
 use std::ffi::{CStr, OsStr};
 use std::os::unix::ffi::OsStrExt;
