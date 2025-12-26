@@ -110,7 +110,7 @@ pub const fn tis2uni(c: thchar_t) -> thwchar_t {
 
 /// Convert string from TIS-620 to Unicode
 pub fn tis2uni_str(s: &[thchar_t]) -> Vec<thwchar_t> {
-    s.iter().map(|c| tis2uni(*c)).collect()
+    s.iter().map(|&c| tis2uni(c)).collect()
 }
 
 /// Convert [`thwchar_t`] string to Rust String
@@ -154,7 +154,12 @@ pub const fn uni2tis(wc: thwchar_t) -> thchar_t {
 ///
 /// May contain internal [`THCHAR_ERR`] when characters are out of range
 pub fn uni2tis_str(s: &[thwchar_t]) -> Vec<thchar_t> {
-    s.iter().map(|c| uni2tis(*c)).collect()
+    s.iter().map(|&c| uni2tis(c)).collect()
+}
+
+/// Convert Rust string to [`thwchar_t`] string
+pub fn rust2uni(s: &str) -> Vec<thwchar_t> {
+    s.chars().map(|c| c as thwchar_t).collect()
 }
 
 fn uni2thai_ext(wc: thwchar_t, rev_map: &[thwchar_t]) -> thchar_t {
@@ -398,5 +403,14 @@ mod tests {
         for ch in mac_sample {
             assert_eq!(ch, uni2macthai(macthai2uni(ch)))
         }
+    }
+
+    #[test]
+    fn test_rust_convert_reversible() {
+        let input = "hello ทดสอบ";
+        let uni = rust2uni(input);
+        let output = uni2rust(&uni);
+
+        assert_eq!(input, output);
     }
 }

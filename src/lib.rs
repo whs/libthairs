@@ -11,6 +11,7 @@
 //!
 //! LibThai is a set of Thai language support routines aimed to ease developers’ tasks to incorporate Thai language support in their applications.
 
+extern crate core;
 extern crate libc;
 
 // pub mod thbrk;
@@ -44,9 +45,10 @@ pub mod str;
 //     pub mod thwbrk;
 // } // mod thwbrk
 pub mod wchar;
+pub use wchar::rust2uni;
 pub use wchar::thwchar_t;
 pub use wchar::uni2rust;
 pub use wchar::THWCHAR_ERR;
 
 pub mod wctype;
-// pub mod wstr;
+pub mod wstr;

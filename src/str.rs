@@ -115,7 +115,7 @@ mod tests {
         let mut buf = vec![0; 50];
         let len = unsafe {
             cffi::th_normalize(
-                unsafe { NonNull::new_unchecked(buf.as_mut_ptr()) },
+                NonNull::new_unchecked(buf.as_mut_ptr()),
                 input.as_ptr().cast(),
                 buf.len(),
             )

@@ -537,6 +537,11 @@ bool th_wcisblvowel(thwchar_t wc);
  */
 int th_wcchlevel(thwchar_t wc);
 
+/**
+ * Normalize character order and remove excessive characters
+ */
+uintptr_t th_wnormalize(thwchar_t *wdest, const thwchar_t *wsrc, uintptr_t n);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus
