@@ -1,3 +1,5 @@
+//! Thai wide-char string manipulators
+
 use ::libc;
 extern "C" {
     fn th_uni2tis(wc: thwchar_t) -> thchar_t;

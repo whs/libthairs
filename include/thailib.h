@@ -403,6 +403,11 @@ enum WTTClass TACchtype(thchar_t c);
 enum WTTOp TACio_op(thchar_t c1, thchar_t c2);
 
 /**
+ * Normalize character order and remove excessive characters
+ */
+uintptr_t th_normalize(thchar_t *dest, const thchar_t *src, uintptr_t n);
+
+/**
  * Convert character code from TIS-620 to Unicode.
  */
 thwchar_t th_tis2uni(thchar_t c);

@@ -38,10 +38,7 @@ pub mod wtt;
 //     //! Thai string rendering
 //     pub mod thrend;
 // } // mod thrend
-// pub mod thstr {
-//     //! Thai string manipulators
-//     pub mod thstr;
-// } // mod thstr
+pub mod str;
 // pub mod thwbrk {
 //     //! Thai wide-char word segmentation
 //     pub mod thwbrk;
@@ -50,8 +47,6 @@ pub mod wchar;
 pub use wchar::thwchar_t;
 pub use wchar::uni2rust;
 pub use wchar::THWCHAR_ERR;
+
 pub mod wctype;
-// pub mod thwstr {
-//     //! Thai wide-char string manipulators
-//     pub mod thwstr;
-// } // mod thwstr
+// pub mod wstr;
