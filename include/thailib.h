@@ -1,7 +1,7 @@
 #ifndef THAI_THAILIB_H
 #define THAI_THAILIB_H
 
-/* Generated with cbindgen:0.27.0 */
+/* Generated with cbindgen:0.29.2 */
 
 #include <stdarg.h>
 #include <stdbool.h>
